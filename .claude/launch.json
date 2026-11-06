@@ -1,0 +1,20 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "demos", "runtimeExecutable": "python3", "runtimeArgs": ["-m", "http.server", "8891", "--directory", "demos"], "port": 8891 },
+    {
+      "name": "cp-dev",
+      "cwd": "control-plane",
+      "runtimeExecutable": "./.venv/bin/uvicorn",
+      "runtimeArgs": ["app.main:app", "--host", "127.0.0.1", "--port", "8000"],
+      "env": {
+        "CP_DATABASE_URL": "sqlite+pysqlite:///./demo.db",
+        "CP_COOKIE_SECURE": "false",
+        "CP_DEV_MODE": "true",
+        "CP_PURCHASES_OPEN": "true",
+        "CP_DEV_FAKE_PAYMENTS": "true"
+      },
+      "port": 8000
+    }
+  ]
+}

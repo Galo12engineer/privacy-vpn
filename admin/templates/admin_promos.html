@@ -1,0 +1,135 @@
+{% extends "admin_base.html" %}
+{% block title %}Промокоды{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p class="admin-kicker">биллинг</p>
+  <h1>Промокоды</h1>
+  <p class="muted">Скидка в процентах на любой тариф. Процент, срок, лимит и выключатель правятся прямо в строке; сам код изменить нельзя — он уже на руках у покупателей.</p>
+</div>
+
+{% if error %}
+<div class="banner banner--danger" style="margin-bottom:1rem"><span class="banner__icon">×</span><div class="banner__body"><p>{{ error }}</p></div></div>
+{% endif %}
+
+<div class="banner banner--info" style="margin-bottom:1.25rem">
+  <span class="banner__icon">i</span>
+  <div class="banner__body">
+    <strong>Как считаются использования</strong>
+    <p>Счётчик растёт при <em>создании счёта</em>, а не при оплате: иначе десяток одновременно созданных счетов прошёл бы проверку лимита и пробил его, когда все разом оплатятся. Неоплаченный счёт держит использование, пока не истечёт (обычно час) — потом оно возвращается автоматически. Поэтому счётчик может временно показывать больше, чем реальных оплат.</p>
+  </div>
+</div>
+
+<div class="banner banner--warn" style="margin-bottom:1.25rem">
+  <span class="banner__icon">!</span>
+  <div class="banner__body">
+    <strong>Промокод — не секрет</strong>
+    <p>Подбор кода снаружи в принципе не отличить от обычного ввода: цена либо изменилась, либо нет. Мы ограничиваем частоту неудачных попыток, но это не защита — код из словаря (<code>SUMMER</code>, <code>LAUNCH</code>) подберут независимо от длины. Считайте любой код публичным: реальные ограничители — это <em>процент</em> и <em>лимит использований</em>, а не скрытность. Для адресной скидки одному человеку надёжнее ручное начисление дней на странице «Аккаунты».</p>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table class="tbl">
+    <caption class="skip">Промокоды с инлайн-редактированием</caption>
+    <thead>
+      <tr>
+        <th scope="col">код</th>
+        <th scope="col" class="num">скидка</th>
+        <th scope="col" class="num">использовано</th>
+        <th scope="col">действует до</th>
+        <th scope="col">статус</th>
+        <th scope="col">изменить</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in promos %}
+      <tr>
+        <td class="cellcode">
+          {{ c.code }}
+          {% if c.note %}<div class="meta">{{ c.note }}</div>{% endif %}
+        </td>
+        <td class="num">−{{ c.percent_off }}%</td>
+        <td class="num">{{ c.used_count }}{% if c.max_uses %} / {{ c.max_uses }}{% else %} / ∞{% endif %}</td>
+        <td>{{ c.expires_at.strftime('%d.%m.%Y') if c.expires_at else '—' }}</td>
+        <td>
+          {% if not c.is_active %}<span class="badge">выключен</span>
+          {% elif c.max_uses and c.used_count >= c.max_uses %}<span class="badge badge--danger">исчерпан</span>
+          {% else %}<span class="badge badge--ok">активен</span>{% endif %}
+        </td>
+        <td>
+          <form method="post" action="{{ admin_path }}/promos/{{ c.id }}" class="inline-edit">
+            <label class="fld"><span>скидка, %</span>
+              <input class="input w-num" name="percent_off" type="number" min="{{ min_percent }}" max="{{ max_percent }}" step="1"
+                     value="{{ c.percent_off }}" aria-label="процент скидки для {{ c.code }}">
+            </label>
+            <label class="fld"><span>до</span>
+              <input class="input w-price" name="expires_at" type="date"
+                     value="{{ c.expires_at.strftime('%Y-%m-%d') if c.expires_at else '' }}"
+                     aria-label="дата окончания для {{ c.code }}">
+            </label>
+            <label class="fld" title="пусто = без лимита"><span>лимит</span>
+              <input class="input w-num" name="max_uses" type="number" min="1" step="1"
+                     value="{{ c.max_uses if c.max_uses else '' }}" aria-label="лимит использований для {{ c.code }}">
+            </label>
+            <label class="fld"><span>актив.</span>
+              <select class="select w-sel" name="is_active" aria-label="активность {{ c.code }}">
+                <option value="1"{% if c.is_active %} selected{% endif %}>да</option>
+                <option value="0"{% if not c.is_active %} selected{% endif %}>нет</option>
+              </select>
+            </label>
+            <button class="btn btn--primary btn--sm" type="submit">Сохранить</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="empty">Промокодов пока нет — создайте первый ниже.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<section style="margin-top:2rem">
+  <div class="page-head" style="margin-bottom:1rem"><h2>Новый промокод</h2></div>
+  <form class="card" method="post" action="{{ admin_path }}/promos">
+    <fieldset class="form-group">
+      <legend>Код и скидка</legend>
+      <div class="form-grid form-grid--3">
+        <div class="field">
+          <label class="label" for="pc-code">Код</label>
+          <input class="input input--mono" id="pc-code" name="code" placeholder="LAUNCH20" maxlength="32"
+                 autocapitalize="characters" spellcheck="false" required>
+          <p class="hint">Приводится к A-Z0-9 в верхнем регистре, минимум {{ min_len }} символов. «launch-20» и «LAUNCH20» — один и тот же код. Чем длиннее и бессмысленнее, тем дороже перебор.</p>
+        </div>
+        <div class="field">
+          <label class="label" for="pc-pct">Скидка, %</label>
+          <input class="input input--mono" id="pc-pct" name="percent_off" type="number"
+                 min="{{ min_percent }}" max="{{ max_percent }}" placeholder="15" required>
+          <p class="hint">От {{ min_percent }} до {{ max_percent }}. Глубже — не кодом, а ручным начислением дней на странице «Аккаунты».</p>
+        </div>
+        <div class="field">
+          <label class="label" for="pc-note">Заметка <span class="opt">— для себя</span></label>
+          <input class="input" id="pc-note" name="note" maxlength="200" placeholder="раздача в канале">
+        </div>
+      </div>
+    </fieldset>
+    <fieldset class="form-group">
+      <legend>Ограничения <span class="opt">— оба необязательны</span></legend>
+      <div class="form-grid">
+        <div class="field">
+          <label class="label" for="pc-exp">Действует до</label>
+          <input class="input input--mono" id="pc-exp" name="expires_at" type="date">
+          <p class="hint">Включительно: код работает до конца указанного дня (UTC). Пусто — без срока.</p>
+        </div>
+        <div class="field">
+          <label class="label" for="pc-uses">Лимит использований</label>
+          <input class="input input--mono" id="pc-uses" name="max_uses" type="number" min="1" placeholder="100">
+          <p class="hint">Пусто — без лимита.</p>
+        </div>
+      </div>
+    </fieldset>
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">Создать промокод</button>
+      <span class="note">создаётся включённым; выключается инлайн в таблице выше — так сохраняется счётчик выданных скидок</span>
+    </div>
+  </form>
+</section>
+{% endblock %}

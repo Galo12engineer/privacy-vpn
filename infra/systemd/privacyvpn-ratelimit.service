@@ -1,0 +1,16 @@
+[Unit]
+# Loads infra/nftables/tt-ratelimit.nft (per-source SYN limit on :443) at boot.
+# Ordered after ufw and docker: neither one flushes the `inet tt_ratelimit` table, but re-applying
+# last means an ordering surprise can never leave the limiter half-installed.
+Description=privacyvpn: per-source connection rate limit on :443
+After=network-pre.target ufw.service docker.service
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/nftables.d/tt-ratelimit.nft
+ExecStop=/usr/sbin/nft delete table inet tt_ratelimit
+
+[Install]
+WantedBy=multi-user.target

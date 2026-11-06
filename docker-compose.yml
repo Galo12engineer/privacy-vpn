@@ -1,0 +1,185 @@
+# Control-plane stack: DB + API + scheduler + reverse proxy (no client IP) + Tor (.onion).
+# Nodes are provisioned separately through infra/provision-node.sh (RAM-only VPS).
+
+# log rotation: without it the json-file logs grow unbounded and fill the anonvm disk (a risk to the DB)
+x-logging: &logrotate
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vpn}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-vpn}
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    # readiness: CP/scheduler wait for service_healthy → no crash loop when they start before the DB
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vpn} -d ${POSTGRES_DB:-vpn}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *logrotate
+    mem_limit: 512m
+    restart: unless-stopped
+
+  control-plane:
+    build:
+      context: .
+      dockerfile: control-plane/Dockerfile
+    environment:
+      CP_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-vpn}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-vpn}
+      CP_ACCOUNT_NUMBER_PEPPER: ${CP_ACCOUNT_NUMBER_PEPPER:?set in .env}
+      CP_SESSION_SECRET: ${CP_SESSION_SECRET:?set in .env}
+      CP_EMAIL_ENCRYPTION_KEY: ${CP_EMAIL_ENCRYPTION_KEY:-}
+      CP_COOKIE_SECURE: ${CP_COOKIE_SECURE:-true}
+      # mandatory admin 2FA: true → an admin without TOTP cannot log in (run enroll_admin_totp.py first).
+      # Default false (fail-safe against lockout) — flip it AFTER enrollment.
+      CP_ADMIN_REQUIRE_2FA: ${CP_ADMIN_REQUIRE_2FA:-false}
+      # secret admin path (defence in depth): /admin → 404, the console lives at CP_ADMIN_PATH.
+      CP_ADMIN_PATH: ${CP_ADMIN_PATH:-/admin}
+      # Tor-only admin access: true → the console is reachable over .onion only, clearnet → 404.
+      # Lockout escape hatch: false + restart control-plane. Default false (fail-safe).
+      CP_ADMIN_ONION_ONLY: ${CP_ADMIN_ONION_ONLY:-false}
+      # public support channels (/support): the relay bot + an optional group/DM/X
+      CP_SUPPORT_TELEGRAM_BOT: ${CP_SUPPORT_TELEGRAM_BOT:-}
+      CP_SUPPORT_TELEGRAM_URL: ${CP_SUPPORT_TELEGRAM_URL:-}
+      CP_SUPPORT_TELEGRAM_DM: ${CP_SUPPORT_TELEGRAM_DM:-}
+      CP_SUPPORT_X_URL: ${CP_SUPPORT_X_URL:-}
+      CP_PUBLIC_BASE_URL: ${CP_PUBLIC_BASE_URL:-}
+      # Whitelist of hosts allowed into canonical/OpenGraph/sitemap URLs, first = primary.
+      # Host is client-controlled, so an unknown one degrades to the primary instead of being
+      # echoed into <link rel="canonical">. The .onion MUST stay in the list: without it, onion
+      # pages would advertise a clearnet og:image — an external resource on the one surface that
+      # must have none.
+      CP_PUBLIC_HOSTS: ${CP_PUBLIC_HOSTS:-privacyvpn.example.com,privacyvpn.example.net,privacyvpnexampleonionaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.onion}
+      # The OxaPay and NOWPayments gateways were removed on 2026-07-24 (see app/payments/bootstrap.py).
+      # Any CP_OXAPAY_* / CP_GATEWAY_* left over in .env are no longer forwarded and the settings
+      # ignore them. BlockBee (non-custodial "address per order") is the ONLY gateway. Enabled from .env.
+      CP_BLOCKBEE_ENABLED: ${CP_BLOCKBEE_ENABLED:-false}
+      CP_BLOCKBEE_API_KEY: ${CP_BLOCKBEE_API_KEY:-}
+      CP_BLOCKBEE_CALLBACK_SECRET: ${CP_BLOCKBEE_CALLBACK_SECRET:-}
+      CP_BLOCKBEE_PAYOUT_BTC: ${CP_BLOCKBEE_PAYOUT_BTC:-}
+      CP_BLOCKBEE_PAYOUT_LTC: ${CP_BLOCKBEE_PAYOUT_LTC:-}
+      CP_BLOCKBEE_PAYOUT_USDT_TRC20: ${CP_BLOCKBEE_PAYOUT_USDT_TRC20:-}
+      # sales: false → /buy is closed ("payment coming soon") until a gateway is wired up.
+      # Default FALSE (fail-safe, in step with config.py) — open it explicitly from .env.
+      CP_PURCHASES_OPEN: ${CP_PURCHASES_OPEN:-false}
+      # the RU circumvention guide: gated off by default, enable it only after a live RU test
+      CP_GUIDES_RU_VLESS_ENABLED: ${CP_GUIDES_RU_VLESS_ENABLED:-false}
+      # bootstrap of the first admin (used by scripts/bootstrap_admin.py)
+      CP_BOOTSTRAP_ADMIN_USER: ${CP_BOOTSTRAP_ADMIN_USER:-}
+      CP_BOOTSTRAP_ADMIN_PASSWORD: ${CP_BOOTSTRAP_ADMIN_PASSWORD:-}
+    # wait for service_healthy (pg_isready) → migrations do not crash-loop when starting before the DB
+    depends_on:
+      db:
+        condition: service_healthy
+    # self-heal + a gate for the scheduler: /healthz issues SELECT 1 (503 when the DB is dead).
+    # the python-slim image has no curl/wget → we poke it with urllib. start_period covers alembic upgrade.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    logging: *logrotate
+    mem_limit: 512m
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: control-plane/Dockerfile
+    command: ["python", "-m", "app.scheduler.run"]
+    environment:
+      CP_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-vpn}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-vpn}
+      CP_ACCOUNT_NUMBER_PEPPER: ${CP_ACCOUNT_NUMBER_PEPPER:?set in .env}
+      CP_SESSION_SECRET: ${CP_SESSION_SECRET:?set in .env}
+      CP_EMAIL_ENCRYPTION_KEY: ${CP_EMAIL_ENCRYPTION_KEY:-}
+      # BlockBee — REQUIRED here, not just on control-plane: the invoice_reconcile job runs in THIS
+      # process and polls BlockBee for payments whose callback never arrived. Without these the
+      # provider is not registered and the whole lost-payment safety net is a silent no-op.
+      CP_PUBLIC_BASE_URL: ${CP_PUBLIC_BASE_URL:-}
+      CP_BLOCKBEE_ENABLED: ${CP_BLOCKBEE_ENABLED:-false}
+      CP_BLOCKBEE_API_KEY: ${CP_BLOCKBEE_API_KEY:-}
+      CP_BLOCKBEE_CALLBACK_SECRET: ${CP_BLOCKBEE_CALLBACK_SECRET:-}
+      CP_BLOCKBEE_PAYOUT_BTC: ${CP_BLOCKBEE_PAYOUT_BTC:-}
+      CP_BLOCKBEE_PAYOUT_LTC: ${CP_BLOCKBEE_PAYOUT_LTC:-}
+      CP_BLOCKBEE_PAYOUT_USDT_TRC20: ${CP_BLOCKBEE_PAYOUT_USDT_TRC20:-}
+    # db healthy → no start before the DB; control-plane started → the migrations (alembic upgrade)
+    # have already run before the scheduler touches any table (it does not apply migrations itself)
+    depends_on:
+      db:
+        condition: service_healthy
+      control-plane:
+        # healthy (not started) → control-plane's migrations are certainly applied before the scheduler starts
+        condition: service_healthy
+    logging: *logrotate
+    mem_limit: 512m
+    restart: unless-stopped
+
+  # Caddy: automatic TLS (Let's Encrypt) + a reverse proxy with no client IP.
+  # The nginx alternative (infra/reverse-proxy/nginx.conf) is kept in the repo for HTTP-only setups.
+  proxy:
+    image: caddy:2-alpine
+    environment:
+      PRIMARY_DOMAIN: ${PRIMARY_DOMAIN:?set in .env (domain, or :80 for local HTTP)}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./infra/reverse-proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on: [control-plane]
+    logging: *logrotate
+    restart: unless-stopped
+
+  tor:
+    # #11 cutover: holds the v3 HS private key (.onion) in the tordata volume → a deanon-critical
+    # component. It used to be the single-maintainer osminogin/tor-simple (pinned by digest); now it
+    # is our own image built from the OFFICIAL Tor Project apt repo (infra/tor/Dockerfile, base
+    # debian:bookworm-slim pinned by digest). It runs as uid=100/gid=101 — the same volume owner the
+    # osminogin image had — so it reads the EXISTING HS key and the .onion address does not change
+    # (see the Dockerfile comment for the cutover procedure: back the key up → build → compare the
+    # hostname → roll back on any mismatch).
+    build:
+      context: .
+      dockerfile: infra/tor/Dockerfile
+    volumes:
+      - ./infra/tor/torrc:/etc/tor/torrc:ro
+      - tordata:/var/lib/tor
+    depends_on: [control-plane]
+    logging: *logrotate
+    restart: unless-stopped
+    # the image health-checks through SOCKS, but we are onion-only (SocksPort 0) → a false unhealthy
+    healthcheck:
+      disable: true
+
+  # the private Telegram support relay (long polling, no inbound ports).
+  # Without SUPPORT_BOT_TOKEN the container just idles — safe until it is configured.
+  support-bot:
+    build:
+      context: .
+      dockerfile: support-bot/Dockerfile
+    environment:
+      SUPPORT_BOT_TOKEN: ${SUPPORT_BOT_TOKEN:-}
+      SUPPORT_BOT_OPERATOR_CHAT_ID: ${SUPPORT_BOT_OPERATOR_CHAT_ID:-}
+      SUPPORT_BOT_CHANNEL_URL: ${SUPPORT_BOT_CHANNEL_URL:-}
+    volumes:
+      - supportbotdata:/data
+    mem_limit: 128m
+    logging: *logrotate
+    restart: unless-stopped
+
+volumes:
+  dbdata:
+  tordata:
+  caddydata:
+  caddyconfig:
+  supportbotdata:

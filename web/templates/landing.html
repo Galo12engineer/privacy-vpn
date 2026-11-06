@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="{{ lang|default('en') }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>privacyvpn VPN — {{ _('анонимный VPN без KYC, оплата криптой') }}</title>
+{% with meta_title = 'privacyvpn VPN — ' + _('анонимный VPN без KYC, оплата криптой') %}{% include "_meta.html" %}{% endwith %}
+<link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<a class="skip" href="#main">{{ _('К содержимому') }}</a>
+
+<header class="topbar">
+  <a class="wordmark" href="/" aria-label="privacyvpn">
+    <span class="wm-1">privacy</span><span class="wm-dot">·</span><span class="wm-2"><span>v</span><span>p</span><span>n</span></span>
+  </a>
+  <nav class="topbar__nav" aria-label="{{ _('Разделы') }}">
+    <a href="#how">{{ _('Как это работает') }}</a>
+    <a href="#trust">{{ _('Доверие') }}</a>
+    <a href="#price">{{ _('Цены') }}</a>
+    <a href="/guides">{{ _('Гайды') }}</a>
+  </nav>
+  <div class="topbar__spacer"></div>
+  <div class="topbar__actions">
+    <nav class="seg" aria-label="{{ _('Язык') }}">
+      <a href="/lang?to=en&amp;back=/" {{ 'aria-current=true' if lang == 'en' }} hreflang="en">EN</a>
+      <a href="/lang?to=ru&amp;back=/" {{ 'aria-current=true' if lang == 'ru' }} hreflang="ru">RU</a>
+    </nav>
+    <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false" aria-label="{{ _('Тема') }}">◐</button>
+    <a class="btn btn--ghost btn--sm" href="/login">{{ _('Войти') }}</a>
+  </div>
+</header>
+
+<main id="main">
+
+  {# HERO: copy + the whoami terminal #}
+  <section class="lp-sec lp-sec--hero">
+    <div class="container">
+      <div class="lp-hero">
+        <div>
+          {# Neither the protocol name nor "no-kyc" in the first line: outside financial compliance "KYC"
+             reads as "an exchange without a passport", and the transport may change (v2relay is
+             dormant). #}
+          <div class="lp-kicker">no-kyc · no-logs · crypto</div>
+          <div class="wordmark wordmark--xl" aria-label="privacyvpn">
+            <span class="wm-1">privacy</span><span class="wm-dot">·</span><span class="wm-2"><span>v</span><span>p</span><span>n</span></span>
+          </div>
+          {# The heading names the CATEGORY. The h1 used to be a slogan, with the word "VPN" living only
+             in the <title> and in muted colour inside the lead — a reader who did not know the brand
+             could not tell what was for sale. The slogan was not thrown away: it moved one line down
+             (.lp-tagline), same translation key. #}
+          <h1>{{ _('VPN без имени, без email, без логов.') }}<span class="lp-cursor" aria-hidden="true"></span></h1>
+          <p class="lp-tagline">{{ _('Тихо. Без логов.') }}</p>
+          <p class="lede">{{ _('Шифрует ваш трафик до нашей exit-ноды: пока туннель поднят, провайдер и публичный Wi-Fi не видят, куда вы ходите, а сайты видят наш IP-адрес, а не ваш. Ни имени, ни email — вход по одному номеру, оплата криптой.') }}</p>
+          {# Someone arriving with a code from a marketplace lands here and nowhere else — the
+             other doors are on /buy and /login, pages they have no reason to open. A muted line
+             under the row was tried first and went unnoticed. #}
+          <div class="btn-row">
+            <a class="btn btn--primary btn--lg btn--mono btn--cmd" href="/buy">{{ _('Купить доступ') }}</a>
+            <a class="btn btn--ghost btn--lg btn--mono" href="/redeem">{{ _('Погасить код') }}</a>
+            <a class="btn btn--ghost btn--lg btn--mono" href="#how">{{ _('Как это работает') }}</a>
+          </div>
+          <p class="lp-methods">Bitcoin · Litecoin · USDT (TRC-20)</p>
+        </div>
+        <aside class="term-win term-win--deep" aria-label="{{ _('Что мы о вас знаем') }}">
+          <div class="term-bar">
+            <span class="term-lamp term-lamp--on" aria-hidden="true"></span><span class="term-lamp" aria-hidden="true"></span><span class="term-lamp" aria-hidden="true"></span>
+            <span class="term-title">privacyvpn — account.session</span>
+          </div>
+          <div class="term-body">
+            <p class="term-runline" aria-hidden="true"><span class="pct">privacyvpn ~ %</span> whoami</p>
+            <div class="term-label">{{ _('ваш единственный логин') }}</div>
+            {# Groups of 4 are separate elements: the number reflows onto a second line instead of being
+               clipped. The spaces between the spans are REAL: inside a flex container an anonymous
+               whitespace-only item does not render (so there is no double gap), yet without CSS —
+               while the browser still holds a cached style.css, say — the number still reads as
+               groups instead of congealing into one 20-digit run. #}
+            <div class="term-num-scroll"><div class="term-num"><span>4831</span> <span>7720</span> <span>9145</span> <span>6602</span> <span>5390<span class="term-caret" aria-hidden="true"></span></span></div></div>
+            <p class="term-note">{{ _('Ни email, ни имени, ни телефона —') }} <b>{{ _('номер, и всё.') }}</b> {{ _('Ключи генерируются в вашем браузере; нам уходит только публичная половина.') }}</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  {# PRINCIPLES: cat principles.txt → three stdout cells #}
+  <section class="lp-sec" aria-label="{{ _('Принципы') }}">
+    <div class="container">
+      <h2 class="visually-hidden">{{ _('Принципы') }}</h2>
+      <p class="term-cmd" aria-hidden="true"><span>privacyvpn</span> <span class="pct">~ %</span> <span><b>cat</b> principles.txt</span></p>
+      <div class="term-win">
+        <div class="lp-cells">
+          <article class="lp-cell">
+            <div class="idx" aria-hidden="true"><span>01</span><span class="ln"></span></div>
+            <h3>{{ _('Нечего логировать') }}</h3>
+            <p class="muted">{{ _('Мы не храним историю подключений, DNS-запросы и трафик. На серверах — журнал в оперативной памяти, без swap; ваши данные на диск не пишутся. Меньше данных — меньше того, что можно изъять.') }}</p>
+          </article>
+          <article class="lp-cell">
+            <div class="idx" aria-hidden="true"><span>02</span><span class="ln"></span></div>
+            <h3>{{ _('Никакого KYC') }}</h3>
+            <p class="muted">{{ _('Ни имени, ни email, ни телефона. Аккаунт — это случайный номер, как у Mullvad. Оплата криптовалютой. Восстановления нет by design.') }}</p>
+          </article>
+          <article class="lp-cell">
+            <div class="idx" aria-hidden="true"><span>03</span><span class="ln"></span></div>
+            <h3>{{ _('Проверяемо') }}</h3>
+            <p class="muted">{{ _('Приватный ключ устройства создаётся в браузере — это видно в инструментах разработчика: на сервер он не уходит. Сайт работает без JS и трекеров, целиком доступен через .onion. Открытый код — на дорожной карте.') }}</p>
+          </article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# HOW IT WORKS: man setup → the log ledger #}
+  <section id="how" class="lp-sec">
+    <div class="container">
+      <p class="term-cmd" aria-hidden="true"><span>privacyvpn</span> <span class="pct">~ %</span> <span><b>man</b> setup</span></p>
+      {# The client's name lives in the guides, not here: the transport may change (v2relay is dormant),
+         and then one document per platform has to change rather than the landing page. But "some app"
+         with no answer to "which one" is a dead end, so a row of guide links sits under the steps —
+         the name is in there. #}
+      <div class="page-head"><h2>{{ _('Как это работает') }}</h2><p class="lede" style="max-width:54ch">{{ _('Своего приложения у нас нет — это осознанно. Вы пользуетесь официальным клиентом с открытым кодом; какой именно — сказано в гайде под вашу систему.') }}</p></div>
+      <ol class="lp-steps" role="list">
+        <li><span class="n" aria-hidden="true">01</span><div><h3>{{ _('Оплатите криптой') }}</h3><p>{{ _('Выберите тариф и валюту. После оплаты получите номер аккаунта.') }}</p></div></li>
+        <li><span class="n" aria-hidden="true">02</span><div><h3>{{ _('Создайте устройство') }}</h3><p>{{ _('Ключи генерируются в вашем браузере. Приватный ключ не покидает устройство.') }}</p></div></li>
+        <li><span class="n" aria-hidden="true">03</span><div><h3>{{ _('Импортируйте конфиг') }}</h3><p>{{ _('Скачайте конфиг или отсканируйте QR в приложении. Готово.') }}</p></div></li>
+      </ol>
+      <p class="mono-note" style="margin-top:1.5rem">{{ _('Выберите систему — гайд назовёт приложение и проведёт по шагам:') }}</p>
+      <ul class="lp-oslist" role="list">
+        <li><a class="btn btn--ghost btn--sm btn--mono" href="/guides/windows">Windows</a></li>
+        <li><a class="btn btn--ghost btn--sm btn--mono" href="/guides/macos">macOS</a></li>
+        <li><a class="btn btn--ghost btn--sm btn--mono" href="/guides/ios">iOS</a></li>
+        <li><a class="btn btn--ghost btn--sm btn--mono" href="/guides/android">Android</a></li>
+        <li><a class="btn btn--ghost btn--sm btn--mono" href="/guides/linux">Linux</a></li>
+      </ul>
+    </div>
+  </section>
+
+  {# TRUST: cat keygen.log | trace → the main terminal #}
+  <section id="trust" class="lp-sec">
+    <div class="container">
+      <p class="term-cmd" aria-hidden="true"><span>privacyvpn</span> <span class="pct">~ %</span> <span><b>cat</b> keygen.log</span> <span>| trace</span></p>
+      <div class="page-head" style="margin-bottom:1rem"><h2>{{ _('Доверие — это проверяемость') }}</h2><p class="muted" style="max-width:60ch">{{ _('Не верьте на слово — смотрите, что физически покидает ваше устройство. Приватность здесь не обещание, а архитектура:') }}</p></div>
+
+      <div class="term-win term-win--deep">
+        <div class="term-bar">
+          <span class="term-lamp term-lamp--on" aria-hidden="true"></span><span class="term-lamp" aria-hidden="true"></span><span class="term-lamp" aria-hidden="true"></span>
+          <span class="term-title">privacyvpn — keygen.trace</span>
+        </div>
+        <div class="term-body">
+          <ul class="term-flow" role="list" aria-label="{{ _('Схема: ключи генерируются в браузере, на сервер уходит только публичный ключ; приватный ключ и история IP остаются на устройстве; данные пользователей на диск ноды не пишутся') }}">
+            <li class="term-hop">
+              <span class="gut" aria-hidden="true">┌─►</span>
+              <div>
+                <div class="term-node">
+                  <div class="nh"><span class="term-tag">{{ _('вы') }}</span><h3>{{ _('Ваше устройство') }}</h3></div>
+                  <p>{{ _('Сеть, трафик и приватный ключ — здесь.') }}</p>
+                </div>
+                <div class="term-pipe"><span aria-hidden="true">│ </span>{{ _('локально, офлайн') }} · <span aria-hidden="true">✕ </span>{{ _('ничего не уходит') }}</div>
+              </div>
+            </li>
+            <li class="term-hop">
+              <span class="gut" aria-hidden="true">├─►</span>
+              <div>
+                <div class="term-node">
+                  <div class="nh"><span class="term-tag">{{ _('01 · клиент') }}</span><h3>{{ _('Браузер генерирует ключи') }}</h3></div>
+                  <p>{{ _('Пара ключей создаётся на странице. Приватный ключ не уходит.') }}</p>
+                </div>
+                <div class="term-pipe term-pipe--acc"><span aria-hidden="true">│ ↑ </span>{{ _('на сервер уходит ТОЛЬКО публичный ключ · 32 байта') }}</div>
+              </div>
+            </li>
+            <li class="term-hop">
+              <span class="gut" aria-hidden="true">└─►</span>
+              <div>
+                <div class="term-node term-node--acc">
+                  <div class="nh"><span class="term-tag">{{ _('02 · нода') }}</span><h3>{{ _('Сервер: без логов, без swap') }}</h3></div>
+                  <p>{{ _('Данных пользователей на диске нет: ключи устройств и список — в памяти, из панели. Перезагрузка их стирает, панель отдаёт заново.') }}</p>
+                </div>
+              </div>
+            </li>
+          </ul>
+          <p class="term-stays"><span class="k"><span aria-hidden="true"># </span>{{ _('остаётся на устройстве:') }}</span> <s>{{ _('приватный ключ') }}</s> · <s>{{ _('история IP') }}</s> {{ _('— нам нечего хранить и нечего выдать.') }}</p>
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:1.75rem">
+        {# The columns are split by meaning, not evenly: everything leading to /transparency on the left,
+           the legal documents on the right. That is how the list survived the removal of the external
+           audit item without turning into 2 against 3. #}
+        <ul class="stack" role="list" style="--space:.6rem;list-style:none;padding:0;margin:0">
+          <li><a href="/transparency#nolog">{{ _('→ No-logs — проверяемая политика') }}</a></li>
+          <li><a href="/transparency#canary">{{ _('Warrant canary — почему не ведём') }}</a></li>
+          <li><a href="/transparency#ram">{{ _('→ Ноды: без данных пользователей') }}</a></li>
+        </ul>
+        <ul class="stack" role="list" style="--space:.6rem;list-style:none;padding:0;margin:0">
+          {# The label used to read "→ Acceptable use and abuse@": 6e8a5a1 removed the mailto from the
+             footer, but the address kept showing here. While the domain has no MX there is no reason
+             to name it to a visitor. #}
+          <li><a href="/aup">{{ _('→ Правила использования') }}</a></li>
+          <li><a href="/privacy">{{ _('→ Политика конфиденциальности') }}</a></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  {# PRICING: ls plans/ → output rows (data-driven) #}
+  <section id="price" class="lp-sec">
+    <div class="container">
+      <p class="term-cmd" aria-hidden="true"><span>privacyvpn</span> <span class="pct">~ %</span> <span><b>ls</b> plans/</span> <span>--sort=duration</span></p>
+      <div class="page-head"><h2>{{ _('Простые цены') }}</h2><p class="muted">{{ _('Без автопродлений. Подписка просто заканчивается — мы ничего не списываем повторно.') }}</p></div>
+      {% if locations %}
+      {# Locations come from the DB, like the prices: a hardcoded country list lies the moment a new
+       node appears. #}
+      <p class="muted">{{ _('Одна подписка — все локации:') }} <b>{{ locations|join(', ') }}</b>. {{ _('Устройство привязано к выбранной локации; чтобы выйти из другой страны, добавьте ещё одно.') }}</p>
+      {% endif %}
+      {% if plans %}
+      <div class="term-win">
+        {% for p in plans %}
+        {% set sym = {'USD':'$','EUR':'€','GBP':'£'}.get(p.fiat_currency, p.fiat_currency ~ ' ') %}
+        <div class="lp-plan{{ ' lp-plan--best' if p.featured else '' }}">
+          <div class="lp-plan__name">
+            <span class="nm">{{ p.name }}{% if p.featured %} <span class="term-tag term-tag--signal">{{ _('рекомендуем') }}</span>{% endif %}</span>
+            <span class="sub">{{ p.device_limit }} {{ _('устройств · безлимитный трафик') }}</span>
+          </div>
+          <div class="amt"><span class="cur">{{ sym }}</span>{{ '%.2f'|format(p.price_fiat_cents / 100) if p.price_fiat_cents % 100 else p.price_fiat_cents // 100 }}</div>
+          <a class="btn btn--mono {{ 'btn--primary btn--cmd' if p.featured else 'btn--ghost' }}" href="/buy">{{ _('Выбрать') }}</a>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="muted">{{ _('Тарифы скоро — смотрите на странице покупки.') }}</p>
+      {% endif %}
+      <p class="muted" style="margin-top:1.25rem">{{ _('Есть подарочный код?') }} <a href="/redeem">{{ _('Погасить код') }}</a> {{ _('— доступ выдаётся сразу, платить не нужно.') }}</p>
+    </div>
+  </section>
+</main>
+
+<footer class="footer footer--term">
+  <div class="footer__inner">
+    <div>
+      <span class="wordmark" style="font-size:var(--fs-md)"><span class="wm-1">privacy</span><span class="wm-dot">·</span><span class="wm-2"><span>v</span><span>p</span><span>n</span></span></span>
+      <p class="muted" style="margin-top:.6rem;max-width:34ch">{{ _('Анонимный VPN. No-KYC. No-logs. Оплата криптой.') }}</p>
+      <div class="trust-row"><span class="term-tag">no-logs</span><span class="term-tag">no-KYC</span></div>
+      <a class="footer__onion" href="http://privacyvpnexampleonionaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.onion">privacyvpnexampleonionaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.onion</a>
+    </div>
+    <div><h3 class="footer__h">{{ _('Доверие') }}</h3><ul role="list"><li><a href="/transparency#nolog">{{ _('No-logs — проверяемый') }}</a></li><li><a href="/transparency#canary">{{ _('Warrant canary — почему не ведём') }}</a></li><li><a href="/transparency#ram">{{ _('Ноды: без данных пользователей') }}</a></li></ul></div>
+    {# The landing page was the only page on the site with no route to a human: its own footer had lost
+       the Support and FAQ links that base.html carries, and the only contact left was abuse@ under a
+       "Legal" heading — which an ordinary visitor reads as "report criminals here". Support now points
+       at /support: the main channel there is the Telegram bot, plus the FAQ and the .onion. #}
+    <div><h3 class="footer__h">{{ _('Помощь') }}</h3><ul role="list"><li><a href="/support">{{ _('Поддержка — Telegram-бот') }}</a></li><li><a href="/faq">FAQ</a></li><li><a href="/guides">{{ _('Гайды') }}</a></li></ul></div>
+    <div><h3 class="footer__h">{{ _('Правовое') }}</h3><ul role="list"><li><a href="/terms">{{ _('Условия') }}</a></li><li><a href="/aup">AUP</a></li><li><a href="/privacy">{{ _('Конфиденциальность') }}</a></li>{# abuse@ was removed from the landing page deliberately: while the domain has no MX, mail to it
+       dies in the sender's queue, and a visitor who mistakes it for a support contact writes into the
+       void. The address stays in /aup and /terms — there it is a compliance contact for hosters and
+       upstreams, not a "write to us". Bring it back here once forwarding works (Dynadot → DNS
+       Settings → Email Forward). #}</ul></div>
+  </div>
+  {# The .onion appears in the landing footer exactly once — as the full address in the brand column
+     above. It used to also be a ".onion" item under "Legal" and again here in the mirrors row: three
+     mentions of one host read as filler. What is kept is the address itself, not a link label: an
+     onion link does not open from an ordinary browser, it gets COPIED into Tor Browser — and what
+     you copy is a string. #}
+  <div class="footer__legal"><span>privacyvpn.example.com · {{ _('зеркало:') }} privacyvpn.example.net</span><span>{{ _('Никаких трекеров. Никаких cookie-согласий. Этот сайт работает без JavaScript.') }}</span></div>
+</footer>
+
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>

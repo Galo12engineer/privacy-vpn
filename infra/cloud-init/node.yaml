@@ -1,0 +1,32 @@
+#cloud-config
+# Provisions a VPN node (RAM-only). Substitute @PLACEHOLDER@ when creating the VPS from the CP
+# template. System-disk FDE is configured at the image/provider level (LUKS), outside cloud-init.
+
+write_files:
+  - path: /etc/profile.d/vpn-agent-env.sh
+    permissions: "0600"
+    content: |
+      export CP_BASE_URL="@CP_BASE_URL@"
+      export AGENT_REGISTRATION_TOKEN="@AGENT_REGISTRATION_TOKEN@"
+      export AGENT_SUBNET_V4="@AGENT_SUBNET_V4@"
+      export AGENT_SUBNET_V6="@AGENT_SUBNET_V6@"
+      export AGENT_WAN_INTERFACE="@AGENT_WAN_INTERFACE@"
+      # node transport: wireguard | amneziawg | vless_reality (this gates package installation in
+      # provision-node.sh; the protocol itself reaches the agent from the CP at registration).
+      # Port: wireguard → 51820; amneziawg → non-standard (NOT 51820); vless_reality → 443.
+      # IMPORTANT: AGENT_WG_LISTEN_PORT must match the node's endpoint_port in the CP.
+      export AGENT_PROTOCOL="@AGENT_PROTOCOL@"
+      export AGENT_WG_LISTEN_PORT="@AGENT_WG_LISTEN_PORT@"
+      export AGENT_WG_LISTEN_PORT_ALT="443"
+      export AGENT_DNS_LISTEN_IP="@AGENT_DNS_LISTEN_IP@"
+      # vless_reality only: pin the Xray version (RECOMMENDED; empty → latest)
+      export AGENT_XRAY_VERSION="@AGENT_XRAY_VERSION@"
+
+runcmd:
+  # disable swap immediately (no-swap)
+  - swapoff -a || true
+  # pull the node code (repo / CI artefact) and run the idempotent provisioning
+  - [ bash, -lc, "source /etc/profile.d/vpn-agent-env.sh && git clone --depth 1 @AGENT_REPO_URL@ /opt/vpn-src && bash /opt/vpn-src/infra/provision-node.sh" ]
+
+# no persistent cloud-init logs on disk for longer than necessary
+output: {all: "| tee /run/cloud-init-output.log"}

@@ -1,0 +1,15 @@
+[Unit]
+Description=Refresh the host Tor client so the monitor's onion probe stops seeing a stale descriptor
+# The monitor probes the .onion through the host tor client (tor@default, SocksPort 9050). That
+# client is long-lived (uptime 8+ days) and periodically its cached hidden-service descriptor goes
+# stale — the probe then gets 000 for ~10 min every 1-3h and fired false "🔴 onion=000" alerts,
+# while a FRESH tor client fetched the same onion with 200 the whole time (verified 2026-07-17).
+# Restarting the client drops the stale cache. The tor CONTAINER (our hidden service) is untouched.
+Wants=tor@default.service
+After=tor@default.service
+
+[Service]
+Type=oneshot
+# A ~30s re-bootstrap follows; a probe landing in that window is absorbed by the monitor's
+# 3-consecutive-fail damping, so it does not alert.
+ExecStart=/usr/bin/systemctl restart tor@default.service

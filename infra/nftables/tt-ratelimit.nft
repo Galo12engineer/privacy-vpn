@@ -1,0 +1,87 @@
+#!/usr/sbin/nft -f
+#
+# Per-source SYN rate limit for the clearnet HTTPS edge (anonvm only, NOT for exit nodes).
+#
+# WHY A SEPARATE TABLE AND THIS HOOK:
+#   Caddy runs in a container with "443:443" published, so inbound :443 is DNAT'ed by Docker and
+#   never traverses ufw's INPUT chain -- a rule in ufw-user-input would silently do nothing.
+#   prerouting/raw (priority -300) runs BEFORE conntrack (-200) and BEFORE dstnat (-100), so the
+#   original dport 443 is still visible here. Own table in the `inet` family: ufw only rebuilds
+#   `ip/ip6 filter`, Docker only touches `ip nat` + FORWARD, so neither flushes this one.
+#   Because we sit before conntrack, `ct state new` is unavailable -- match a bare SYN instead,
+#   which is what a connection-rate limit actually wants.
+#
+# POLICY IS ACCEPT AND EVERY RULE IS A FULL POSITIVE MATCH (proto + port + flags). Nothing that
+# fails to match can be dropped by accident -- important, since this hook sees ALL inbound traffic
+# including DNS replies and UDP/443 (HTTP/3).
+#
+# BUDGET: 60 new connections/minute per source IP, burst 20. Real load is ~1 request/minute
+# site-wide (measured 2026-07-31..2026-08-05), and a browser opens 1-2 connections per page over
+# HTTP/2, so this is orders of magnitude above any legitimate client -- including a shared Tor exit
+# or a CGNAT carrier IP. It is a floor against trivial floods, NOT volumetric DDoS protection:
+# anything that saturates the uplink can only be filtered upstream by the host provider.
+#
+# Trusted sources are exempt so a limiter bug can never take down the node control channel.
+#
+# Apply:    sudo nft -f /etc/nftables.d/tt-ratelimit.nft
+# Inspect:  sudo nft list chain inet tt_ratelimit prerouting     # drop counter
+#           sudo nft list set   inet tt_ratelimit syn4           # who is currently over budget
+# Rollback: sudo nft delete table inet tt_ratelimit              # instant, no reboot
+
+# idempotent re-apply: create-if-absent, then drop, then define
+table inet tt_ratelimit
+delete table inet tt_ratelimit
+
+table inet tt_ratelimit {
+	# never rate-limited: loopback-routed self checks, own public IP (monitor.sh curls the live
+	# domain from the host), and the two node agents that post /v1/nodes/<id>/health every minute.
+	set trusted4 {
+		type ipv4_addr
+		elements = {
+			127.0.0.1,
+			203.0.113.21,
+			198.51.100.31,
+			198.51.100.32,
+		}
+	}
+
+	# dynamic per-source buckets; entries self-expire, nothing is persisted (no-logs)
+	set syn4 {
+		type ipv4_addr
+		size 65535
+		flags dynamic, timeout
+		timeout 1m
+	}
+
+	set syn6 {
+		type ipv6_addr
+		size 65535
+		flags dynamic, timeout
+		timeout 1m
+	}
+
+	chain prerouting {
+		type filter hook prerouting priority raw; policy accept;
+
+		# `iifname "eth0"` IS LOAD-BEARING, DO NOT DROP IT.
+		# prerouting sees every packet entering the host from ANY interface -- including the
+		# OUTBOUND traffic of our own containers, which arrives from the docker bridge on its way
+		# out. support-bot -> api.telegram.org, Caddy -> ACME and control-plane -> BlockBee are all
+		# TCP SYNs to dport 443, and without this guard they were counted against the bridge IP
+		# (172.18.0.x) and would be dropped during any retry burst -- silently killing the alert
+		# channel. Confirmed live on 2026-08-05: 172.18.0.2 (support-bot) landed in @syn4.
+		# Limiting to the WAN interface leaves only genuinely inbound clearnet traffic.
+
+		meta nfproto ipv4 iifname "eth0" tcp dport 443 ip saddr @trusted4 accept
+
+		meta nfproto ipv4 iifname "eth0" tcp dport 443 tcp flags & (fin | syn | rst | ack) == syn \
+			update @syn4 { ip saddr limit rate over 60/minute burst 20 packets } \
+			counter drop
+
+		# the host currently has no global IPv6, but Docker binds [::]:443 -- keep the ceiling in
+		# place so enabling IPv6 later cannot silently open an unlimited path.
+		meta nfproto ipv6 iifname "eth0" tcp dport 443 tcp flags & (fin | syn | rst | ack) == syn \
+			update @syn6 { ip6 saddr limit rate over 60/minute burst 20 packets } \
+			counter drop
+	}
+}

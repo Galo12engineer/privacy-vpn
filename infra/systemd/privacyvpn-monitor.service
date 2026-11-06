@@ -1,0 +1,22 @@
+[Unit]
+Description=privacyvpn monitoring probe (healthz + node staleness + onion → alert)
+After=docker.service
+Wants=docker.service
+# If the probe itself dies (timeout/crash), say so out loud — silence must never read as "all OK".
+OnFailure=privacyvpn-monitor-failed.service
+
+[Service]
+Type=oneshot
+# TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID — alert channel (empty → journal only)
+EnvironmentFile=-/etc/privacyvpn-monitor.env
+WorkingDirectory=/opt/privacyvpn
+ExecStart=/opt/privacyvpn/infra/monitoring/monitor.sh
+# Must exceed the probe's WORST case, not its typical 4s. Worst case (everything broken, every
+# retry burned): healthz 6x15+5x10=140s, nodes `timeout 20`, onion 2x120+5=245s (a cold Tor HS
+# connection legitimately takes tens of seconds — measured up to 79s), plus a heartbeat query and
+# up to two 15s Telegram sends ≈ 435s. This used to be 60s — so a REAL outage made the probes slow
+# enough that the probe was killed before it could alert. Three such silent kills happened live on
+# 2026-07-16. Raised 480 -> 540 together with the healthz retries (3 -> 6, 2026-08-08): the timeout
+# must keep its margin over the worst case, or the fix for false alerts would buy a silent kill.
+# Overlapping timer triggers are harmless: systemd will not run a second instance.
+TimeoutStartSec=540

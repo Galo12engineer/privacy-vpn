@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% set page = 'guides' %}
+{% block title %}WireGuard — iOS · privacyvpn VPN{% endblock %}
+{% block main_class %}container guide{% endblock %}
+
+{% block content %}
+<p class="term-cmd" aria-hidden="true"><span>privacyvpn</span> <span class="pct">~ %</span> <span><b>man</b> wireguard-ios</span></p>
+<div class="page-head">
+  <h1>{{ _('iOS / iPadOS — подключение') }}</h1>
+  <p class="lede" style="max-width:60ch">{{ _('Официальный клиент WireGuard; своего приложения у нас нет. Приватный ключ генерируется в вашем браузере и не покидает устройство.') }}</p>
+</div>
+
+<ol class="lp-steps" role="list">
+  <li><span class="n" aria-hidden="true">01</span><div><p>{{ _('Установите') }} <b>WireGuard</b> {{ _('из App Store (официальное приложение).') }}</p></div></li>
+  <li><span class="n" aria-hidden="true">02</span><div><p>{{ _('В кабинете добавьте устройство. Дальше путь зависит от того, где открыта страница с конфигом — на самом iPhone или на компьютере.') }}</p></div></li>
+</ol>
+
+<div class="term-win" style="margin-top:1.25rem">
+  <div class="lp-cells lp-cells--2">
+    <section class="lp-cell">
+      <div class="idx" aria-hidden="true"><span>{{ _('на этом же iPhone') }}</span><span class="ln"></span></div>
+      <h2>{{ _('Через файл') }}</h2>
+      <p class="muted">{{ _('QR тут не поможет: WireGuard сканирует камерой, а код находится на экране этого же телефона.') }}</p>
+      <ol class="lp-steps" role="list">
+        <li><span class="n" aria-hidden="true">1</span><div><p>{{ _('Проще всего —') }} <b>{{ _('Поделиться в WireGuard') }}</b>{{ _(': откроется системное меню, где можно сразу выбрать WireGuard либо «Сохранить в «Файлы»».') }}</p></div></li>
+        <li><span class="n" aria-hidden="true">2</span><div><p>{{ _('Если этой кнопки нет — нажмите') }} <b>{{ _('Скачать .conf') }}</b> {{ _('и сохраните файл (подойдёт папка «Загрузки» или «На iPhone»).') }}</p></div></li>
+        <li><span class="n" aria-hidden="true">3</span><div><p>{{ _('Дальше в WireGuard:') }} <b>+</b> → <b>Create from file or archive</b> → {{ _('выберите файл') }} <code>.conf</code> {{ _('и дайте туннелю имя.') }}</p></div></li>
+      </ol>
+    </section>
+    <section class="lp-cell">
+      <div class="idx" aria-hidden="true"><span>{{ _('с компьютера') }}</span><span class="ln"></span></div>
+      <h2>{{ _('Через QR') }}</h2>
+      <p class="muted">{{ _('Работает, когда страница с конфигом открыта на другом экране — компьютере или планшете.') }}</p>
+      <ol class="lp-steps" role="list">
+        <li><span class="n" aria-hidden="true">1</span><div><p>{{ _('Откройте WireGuard:') }} <b>+</b> → <b>Create from QR code</b>.</p></div></li>
+        <li><span class="n" aria-hidden="true">2</span><div><p>{{ _('Наведите камеру на QR со второго экрана. Код строится локально — приватный ключ остаётся в браузере.') }}</p></div></li>
+      </ol>
+    </section>
+  </div>
+</div>
+
+<ol class="lp-steps" role="list" start="3" style="margin-top:1.25rem">
+  <li><span class="n" aria-hidden="true">03</span><div><p>{{ _('Разрешите добавление VPN-конфигурации и включите туннель.') }}</p></div></li>
+</ol>
+
+<p class="mono-note" style="margin-top:1rem"><span aria-hidden="true"># </span>{{ _('Если файл сохранился, но в списке WireGuard его не видно — в окне выбора файла переключитесь на «Обзор» и найдите папку, куда сохраняли.') }}</p>
+
+<div class="term-win" style="margin-top:1.75rem">
+  <div class="lp-cells lp-cells--2">
+    <section class="lp-cell">
+      <div class="idx" aria-hidden="true"><span>kill-switch</span><span class="ln"></span></div>
+      <h2>{{ _('Kill-switch') }}</h2>
+      <p class="muted">{{ _('«On-Demand» в настройках туннеля поднимает VPN автоматически — но это НЕ kill-switch: при обрыве трафик уйдёт мимо туннеля.') }} {{ _('Тумблера, блокирующего трафик при обрыве, в официальном клиенте для iOS нет: AllowedIPs = 0.0.0.0/0 задаёт лишь маршрутизацию, пока туннель поднят.') }} {{ _('Нужен гарантированный fail-closed — Windows, Android или Linux с nftables.') }}</p>
+    </section>
+    <section class="lp-cell">
+      <div class="idx" aria-hidden="true"><span>dns</span><span class="ln"></span></div>
+      <h2>{{ _('DNS и утечки') }}</h2>
+      <p class="muted">{{ _('DNS уже прописан в конфиге — наш резолвер на самой ноде, без логов. Проверить утечки можно любым dnsleak-тестом.') }} {{ _('Если сеть режет порт 51820 — используйте Endpoint') }} <code>:443</code>.</p>
+    </section>
+  </div>
+</div>
+
+<p class="mono-note" style="margin-top:1.5rem"><span aria-hidden="true"># </span>{{ _('Vanilla WireGuard может детектироваться DPI в некоторых сетях (RU/IR/CN). Обфускация — на дорожной карте (требует не-официального клиента).') }}</p>
+<p style="margin-top:1.5rem"><a href="/guides">← {{ _('Гайды') }}</a></p>
+{% endblock %}

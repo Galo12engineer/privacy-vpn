@@ -1,0 +1,196 @@
+{% extends "admin_base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Ноды{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p class="admin-kicker">инфраструктура</p>
+  <h1>Ноды</h1>
+  <p class="muted">Exit-ноды парка, регистрация новых и снятие peer'а по абьюзу.</p>
+</div>
+
+{% if warn == 'node_unreachable' %}
+<div class="banner banner--warn" role="alert" style="margin-bottom:1.25rem">
+  <span class="banner__icon">!</span>
+  <div class="banner__body">
+    <strong>Peer снят в базе, но нода не подтвердила снятие</strong>
+    <p>Канал control-plane → нода недоступен. Peer может оставаться активным на ноде — проверьте связь и повторите блокировку.</p>
+  </div>
+</div>
+{% elif warn %}
+<div class="banner banner--danger" role="alert" style="margin-bottom:1.25rem">
+  <span class="banner__icon">×</span>
+  <div class="banner__body">
+    <strong>Нода не создана</strong>
+    <p class="mono">{{ warn }}</p>
+  </div>
+</div>
+{% endif %}
+
+{% if token %}
+<div class="callout" role="note" style="margin-bottom:1.5rem">
+  <div class="callout__label">⚠ Одноразовый токен регистрации — показывается один раз</div>
+  <p style="margin:0 0 .4rem;font-size:var(--fs-sm)">Вставьте в cloud-init ноды — по нему агент зарегистрируется и получит per-node секрет. После ухода со страницы токен не восстановить.</p>
+  <div class="token-display">
+    <code id="reg-token">{{ token }}</code>
+    <button class="btn btn--ghost btn--sm" type="button" data-copy="#reg-token" data-copied="Скопировано ✓">Копировать</button>
+  </div>
+</div>
+{% endif %}
+
+<div class="table-wrap">
+  <table class="tbl tbl--dense">
+    <caption class="skip">Exit-ноды</caption>
+    <thead>
+      <tr>
+        <th scope="col">нода</th>
+        <th scope="col">endpoint</th>
+        <th scope="col">протокол</th>
+        <th scope="col">статус</th>
+        <th scope="col">продажа</th>
+        <th scope="col">health</th>
+        <th scope="col">свежесть</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for n in nodes %}
+      <tr>
+        <td>
+          <div class="stack2">
+            <span>{{ n.name }}</span>
+            <span class="meta">{{ n.location_name }} · {{ n.location_code }}</span>
+          </div>
+        </td>
+        <td class="cellcode">{{ n.endpoint_host }}:{{ n.endpoint_port }}<span class="subtle">/{{ n.endpoint_port_alt }}</span></td>
+        <td class="proto">{{ m.proto_label(n.protocol) }}</td>
+        <td>{{ m.node_status(n.status) }}</td>
+        <td>{{ m.sale_badge(n.available_for_sale) }}</td>
+        <td><span class="metric">cpu&nbsp;<b>{{ n.health_cpu_pct if n.health_cpu_pct is not none else '—' }}</b> · mem&nbsp;<b>{{ n.health_mem_pct if n.health_mem_pct is not none else '—' }}</b> · peers&nbsp;<b>{{ n.health_peers if n.health_peers is not none else '—' }}</b></span></td>
+        <td><span class="freshness">{{ n.last_health_at.strftime('%Y-%m-%d %H:%M') if n.last_health_at else 'нет данных' }}</span></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="empty">Нод пока нет — зарегистрируйте первую ниже.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<section style="margin-top:2rem">
+  <div class="page-head" style="margin-bottom:1rem"><h2>Зарегистрировать ноду</h2></div>
+  <form class="card" method="post" action="{{ admin_path }}/nodes">
+    <fieldset class="form-group">
+      <legend>Идентификация</legend>
+      <div class="form-grid form-grid--3">
+        <div class="field">
+          <label class="label" for="nn-name">Имя</label>
+          <input class="input input--mono" id="nn-name" name="name" placeholder="pa-1"
+                 autocapitalize="none" spellcheck="false" required>
+        </div>
+        <div class="field">
+          <label class="label" for="nn-lc">Код локации</label>
+          <input class="input input--mono" id="nn-lc" name="location_code" placeholder="pa"
+                 autocapitalize="none" spellcheck="false" required>
+        </div>
+        <div class="field">
+          <label class="label" for="nn-ln">Локация</label>
+          <input class="input" id="nn-ln" name="location_name" placeholder="Panama" required>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="form-group">
+      <legend>Сеть</legend>
+      <div class="form-grid">
+        <div class="field span-2">
+          <label class="label" for="nn-host">Endpoint host</label>
+          <input class="input input--mono" id="nn-host" name="endpoint_host" placeholder="pa1.example.net"
+                 autocapitalize="none" spellcheck="false" required>
+        </div>
+        <div class="field">
+          <label class="label" for="nn-v4">Подсеть IPv4 <span class="opt">— CIDR</span></label>
+          <input class="input input--mono" id="nn-v4" name="subnet_v4" placeholder="10.10.0.0/24"
+                 autocapitalize="none" spellcheck="false" required>
+        </div>
+        <div class="field">
+          <label class="label" for="nn-dns">DNS ноды</label>
+          <input class="input input--mono" id="nn-dns" name="dns_ip" placeholder="10.10.0.1"
+                 autocapitalize="none" spellcheck="false" required>
+        </div>
+        <div class="field">
+          <label class="label" for="nn-v6">Подсеть IPv6 <span class="opt">— опц.</span></label>
+          <input class="input input--mono" id="nn-v6" name="subnet_v6" placeholder="fd00:10::/64"
+                 autocapitalize="none" spellcheck="false">
+        </div>
+        <div class="field">
+          <label class="label" for="nn-port">Порт endpoint <span class="opt">— опц.</span></label>
+          <input class="input input--mono" id="nn-port" name="endpoint_port" inputmode="numeric"
+                 placeholder="AmneziaWG ≠ 51820 · Reality = 443">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="form-group">
+      <legend>Транспорт</legend>
+      <div class="field">
+        <label class="label" for="nn-proto">Протокол</label>
+        <select class="select" id="nn-proto" name="protocol">
+          <option value="wireguard">WireGuard — ванильный</option>
+          <option value="amneziawg">AmneziaWG — обфускация DPI</option>
+          <option value="vless_reality">VLESS+Reality — маскировка под HTTPS</option>
+        </select>
+        <p class="hint">Профиль обфускации (AmneziaWG) и Reality-ключи генерируются автоматически при создании.</p>
+      </div>
+    </fieldset>
+
+    <fieldset class="form-group">
+      <legend>Reality <span class="opt">— только для VLESS+Reality</span></legend>
+      <div class="form-grid">
+        <div class="field">
+          <label class="label" for="nn-dest">reality_dest</label>
+          <input class="input input--mono" id="nn-dest" name="reality_dest" placeholder="www.example.com:443"
+                 autocapitalize="none" spellcheck="false">
+          <p class="hint">Цель маскировки: реальный TLS-1.3 сайт (h2, не CDN). Проверяется сетью при создании.</p>
+        </div>
+        <div class="field">
+          <label class="label" for="nn-sni">reality_server_names</label>
+          <input class="input input--mono" id="nn-sni" name="reality_server_names" placeholder="www.example.com, example.com"
+                 autocapitalize="none" spellcheck="false">
+          <p class="hint">SNI через запятую.</p>
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">Создать + выдать токен</button>
+      <span class="note">после создания одноразовый токен показывается вверху страницы</span>
+    </div>
+  </form>
+</section>
+
+<section style="margin-top:2rem">
+  <div class="page-head" style="margin-bottom:1rem"><h2>Абьюз — снять peer</h2></div>
+  {# data-confirm: the prompt text lives here, not in /static/admin.js — that file is fetchable by
+     anyone and a Russian literal in it is an operator-attribution leak (the site names no operator). #}
+  <form class="card" method="get" action="{{ admin_path }}/nodes" data-block-form data-peer-block-base="{{ admin_path }}/peers" data-confirm="Снять peer %s? Действие необратимо.">
+    <div class="banner banner--danger" role="note" style="margin-bottom:1.25rem">
+      <span class="banner__icon">!</span>
+      <div class="banner__body">
+        <strong>Необратимое действие</strong>
+        <p>Peer удаляется из базы и снимается с ноды. Если нода недоступна, снятие применится только в базе — вы увидите предупреждение.</p>
+      </div>
+    </div>
+    <div class="field">
+      <label class="label" for="pb-id">ID peer'а <span class="opt">— UUID</span></label>
+      <input class="input input--mono" id="pb-id" name="peer_id"
+             placeholder="00000000-0000-0000-0000-000000000000"
+             autocapitalize="none" spellcheck="false" pattern="[0-9a-fA-F-]{8,}">
+    </div>
+    <div class="form-actions">
+      <button class="btn btn--danger" type="submit">Блокировать peer</button>
+      <span class="note">снятие подтверждается ответом ноды</span>
+    </div>
+    <noscript>
+      <p class="hint" style="margin-top:.6rem">Без JavaScript: отправьте <code class="mono">POST {{ admin_path }}/peers/&lt;ID&gt;/block</code> вручную.</p>
+    </noscript>
+  </form>
+</section>
+{% endblock %}

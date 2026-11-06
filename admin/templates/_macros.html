@@ -1,0 +1,61 @@
+{# ---- shared renderers: status → badge, protocol/method labels.
+      Uses only base style.css badge classes (ok/warn/danger/info, and the
+      neutral default .badge for off/disabled states). ---- #}
+
+{% macro node_status(status) -%}
+  {%- set s = status.value if status is not string and status else status -%}
+  {%- if s == 'active' -%}
+    <span class="badge badge--ok">active</span>
+  {%- elif s == 'provisioning' -%}
+    <span class="badge badge--warn">provisioning</span>
+  {%- elif s == 'draining' -%}
+    <span class="badge badge--warn">draining</span>
+  {%- elif s == 'down' -%}
+    <span class="badge badge--danger">down</span>
+  {%- elif s == 'disabled' -%}
+    <span class="badge">disabled</span>
+  {%- else -%}
+    <span class="badge">{{ s or '—' }}</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro invoice_status(status) -%}
+  {%- set s = status.value if status is not string and status else status -%}
+  {%- if s == 'paid' -%}
+    <span class="badge badge--ok">paid</span>
+  {%- elif s in ('created', 'awaiting_confirmation') -%}
+    <span class="badge badge--warn">{{ s.replace('_', ' ') }}</span>
+  {%- elif s == 'overpaid' -%}
+    <span class="badge badge--info">overpaid</span>
+  {%- elif s in ('underpaid', 'late_payment') -%}
+    <span class="badge badge--danger">{{ s.replace('_', ' ') }}</span>
+  {%- elif s in ('expired', 'cancelled') -%}
+    <span class="badge">{{ s }}</span>
+  {%- else -%}
+    <span class="badge">{{ s or '—' }}</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro proto_label(proto) -%}
+  {%- set p = proto.value if proto is not string and proto else proto -%}
+  {%- if p == 'wireguard' -%}WireGuard
+  {%- elif p == 'amneziawg' -%}AmneziaWG
+  {%- elif p == 'vless_reality' -%}VLESS+Reality
+  {%- else -%}{{ p or '—' }}{%- endif -%}
+{%- endmacro %}
+
+{% macro method_label(method) -%}
+  {%- set m = method.value if method is not string and method else method -%}
+  {%- if m == 'btc_onchain' -%}BTC (on-chain)
+  {%- elif m == 'usdt_trc20' -%}USDT (TRC-20)
+  {%- elif m == 'litecoin' -%}Litecoin
+  {%- elif m == 'monero' -%}Monero
+  {%- elif m == 'lightning' -%}Lightning
+  {%- elif m == 'cash' -%}Наличные
+  {%- else -%}{{ m or '—' }}{%- endif -%}
+{%- endmacro %}
+
+{% macro sale_badge(on) -%}
+  {%- if on -%}<span class="badge badge--ok">в&nbsp;продаже</span>
+  {%- else -%}<span class="badge">скрыта</span>{%- endif -%}
+{%- endmacro %}

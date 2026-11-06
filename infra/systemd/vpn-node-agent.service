@@ -1,0 +1,27 @@
+[Unit]
+Description=VPN node agent (RAM-only)
+After=network-online.target unbound.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# PERSISTENT env (not /run tmpfs — otherwise it is empty after a reboot → the agent does not start)
+EnvironmentFile=/etc/vpn-node-agent/agent.env
+ExecStart=/opt/vpn-node-agent/.venv/bin/python -m agent.run
+Restart=always
+RestartSec=5
+# persist the node state (server WG private key + identity) → /var/lib/vpn-node-agent,
+# survives a reboot; systemd creates the directory 0700 and makes it writable under ProtectSystem=strict.
+StateDirectory=vpn-node-agent
+StateDirectoryMode=0700
+ProtectSystem=strict
+# private writable /tmp on tmpfs — for tempfile.mkstemp in nft.py/wg.py; TLS cert in /dev/shm (RAM)
+PrivateTmp=yes
+ReadWritePaths=/dev/shm /etc/unbound
+NoNewPrivileges=yes
+# wg/nft require network capability
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
+
+[Install]
+WantedBy=multi-user.target

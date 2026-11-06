@@ -1,0 +1,58 @@
+# Caddy in front of the control-plane: automatic TLS (Let's Encrypt) + an access log with the
+# client IP DELETED (no-logs policy). CI (scripts/check_no_pii_logs.sh) requires "remote_ip delete".
+#
+# Domain and email come from the env (docker-compose -> .env):
+#   PRIMARY_DOMAIN=privacyvpn.example.com   ACME_EMAIL=ops@example.org
+# Local smoke with no domain/certificate: PRIMARY_DOMAIN=:80 (Caddy serves over HTTP).
+
+{
+	email {$ACME_EMAIL}
+	# Caddy's admin API is not needed from outside
+	admin off
+}
+
+# shared cabinet site config — imported by the main domain AND the .si mirror (DRY, and both are
+# then guaranteed to strip the client IP per no-logs).
+(cabinet) {
+	# edge body limit: the unauthenticated webhook/node routes buffer the body (await request.body())
+	# BEFORE the signature check → an anonymous caller could throw a huge body at a 512m worker.
+	# Legitimate requests (webhooks, pubkey, a node's TLS cert) are < 10KB, so 1MB is ample.
+	request_body {
+		max_size 1MB
+	}
+
+	reverse_proxy control-plane:8000 {
+		# the real client IP is NOT forwarded upstream (the CP neither logs nor receives it)
+		header_up -X-Forwarded-For
+		header_up -X-Real-IP
+		# the "arrived over clearnet" marker: replace (not +) → a client can neither forge nor drop it.
+		# The Tor HS reaches the control-plane directly, bypassing Caddy → no marker. The Tor-only
+		# admin console (CP_ADMIN_ONION_ONLY) rests on exactly this: see admin_ui._is_tor.
+		header_up X-Tt-Edge clearnet
+	}
+
+	# access log without the client IP
+	log {
+		format filter {
+			fields {
+				request>remote_ip delete
+				request>client_ip delete
+				request>headers>X-Forwarded-For delete
+			}
+		}
+		output stderr
+	}
+}
+
+{$PRIMARY_DOMAIN} {
+	import cabinet
+}
+
+# privacyvpn.example.net — an INDEPENDENT mirror (NOT a 301 to .com: a redirect is useless if .com is seized).
+# The .si A record points at the same IP; Caddy will obtain a separate LE cert on its own (needs a
+# correct A record + port 80).
+# NOTE: with a local PRIMARY_DOMAIN=:80 dev setup this block produces background ACME retries for
+# .si (not fatal, the main site works) — comment it out while debugging locally.
+privacyvpn.example.net {
+	import cabinet
+}

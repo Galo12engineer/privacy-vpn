@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Счёт') }} — privacyvpn VPN{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <p class="mono subtle" style="font-size:var(--fs-xs);letter-spacing:.08em">{{ _('СЧЁТ') }} #{{ invoice.id }}</p>
+  <h1>{{ _('Оплата') }}</h1>
+</div>
+
+{% if is_new and account_number %}
+<div class="callout" style="margin-bottom:1.5rem">
+  <div class="callout__label">{{ _('★ Ваш номер аккаунта — сохраните его сейчас') }}</div>
+  <div class="token-display">
+    <code id="acct">{{ account_number }}</code>
+    <button class="btn btn--primary" type="button" data-copy="#acct" data-copied="{{ _('Скопировано ✓') }}">{{ _('Скопировать') }}</button>
+  </div>
+  {# The warning used to say only "before you close the tab" — but the page's own refresh-status
+     link goes to GET /invoice/{id}, which renders with account_number=None and wipes the
+     number. The customer loses his credential by pressing the button the page offers him. The
+     server cannot re-show it: it stores only the hash (by design). So name the real trap. #}
+  <p style="margin:0;font-size:var(--fs-sm)"><strong>{{ _('Восстановления нет.') }}</strong> {{ _('Это единственный ключ к подписке — мы храним только его хэш и вернуть номер не сможем (email, если вы его указали, для восстановления не используется).') }} <strong>{{ _('Номер показывается один раз: он исчезнет, как только вы обновите страницу или нажмёте «Обновить статус».') }}</strong> {{ _('Сохраните в менеджере паролей прямо сейчас.') }}</p>
+</div>
+{% endif %}
+
+{% set st = invoice.status.value if invoice.status else 'created' %}
+<div class="split">
+  <section>
+    {% if st in ['paid', 'overpaid'] %}
+    <div class="banner banner--ok" role="status"><span class="banner__icon">●</span><div class="banner__body"><strong>{{ _('Оплачено') }}</strong><p>{{ _('Подписка активирована.') }}</p></div></div>
+    {% elif st == 'awaiting_confirmation' %}
+    <div class="banner banner--warn" role="status"><span class="banner__icon">◔</span><div class="banner__body"><strong>{{ _('Платёж получен — ждём подтверждений сети') }}</strong><p>{{ _('Подтверждений:') }} {{ invoice.confirmations_seen }} {{ _('из') }} {{ invoice.confirmations_required }}. {{ _('Обычно 10–40 минут. Страницу можно закрыть.') }}</p></div></div>
+    {% elif st == 'underpaid' %}
+    <div class="banner banner--danger" role="status"><span class="banner__icon">!</span><div class="banner__body"><strong>{{ _('Недоплата') }}</strong><p>{{ _('Пришлите полную сумму одной транзакцией — создайте новый счёт. Доплата второй транзакцией не сложится с первой автоматически. По возврату застрявшей суммы —') }} <a href="{{ url_for('support') }}">{{ _('поддержка') }}</a>.</p></div></div>
+    {% elif st in ['expired', 'cancelled', 'late_payment'] %}
+    <div class="banner banner--danger" role="status"><span class="banner__icon">×</span><div class="banner__body"><strong>{{ _('Счёт истёк') }}</strong><p>{{ _('Создайте новый счёт. Если вы уже отправили монеты на этот адрес — не отправляйте больше и напишите в') }} <a href="{{ url_for('support') }}">{{ _('поддержку') }}</a>: {{ _('укажите номер счёта, мы разберёмся вручную.') }}</p></div></div>
+    {% else %}
+    {# The deadline used to be invisible: the page said only "rate is locked", while invoice.expires_at
+       (60 min) quietly ran out and coins arriving later were credited to nobody. Funding a wallet
+       from an exchange routinely takes longer than that. #}
+    <div class="banner banner--info" role="status"><span class="banner__icon">○</span><div class="banner__body"><strong>{{ _('Создан') }}</strong><p>{{ _('Ждём оплату. Сумма зафиксирована.') }}{% if pay_deadline %} <strong>{{ _('Монеты должны прийти до {deadline}.').format(deadline=pay_deadline) }}</strong> {{ _('Позже счёт закроется, и платёж придётся разбирать вручную через поддержку. Если выводите с биржи — учтите её задержку.') }}{% endif %}</p></div></div>
+    {% endif %}
+
+    <div class="card" style="margin-top:1.25rem">
+      <div class="card__head"><span class="card__title">{{ _('Реквизиты') }}</span><span class="badge badge--info">{{ invoice.method.value if invoice.method else '' }}</span></div>
+      <dl class="kv kv--inline" style="margin-bottom:1rem">
+        {% if invoice.crypto_amount %}<dt class="muted">{{ _('Сумма') }}</dt><dd><span class="mono" style="font-weight:600">{{ invoice.crypto_amount }} {{ invoice.crypto_currency }}</span></dd>{% endif %}
+        {# The fiat figure the crypto amount was quoted from. It is the ONE number the customer can
+           check the discount against — the crypto sum alone tells them nothing about whether the
+           promo actually landed. #}
+        <dt class="muted">{{ _('К оплате') }}</dt><dd>{{ '%.2f'|format(invoice.amount_fiat_cents / 100) }} {{ invoice.fiat_currency }}{% if invoice.discount_percent %} <span class="badge badge--ok">{{ _('промокод −{percent}%').format(percent=invoice.discount_percent) }}</span>{% endif %}</dd>
+        <dt class="muted">{{ _('Тариф') }}</dt><dd>{{ days_phrase(invoice.days_granted) }}</dd>
+      </dl>
+      {% if invoice.checkout_url %}
+      <p class="hint" style="margin-bottom:.75rem">{{ _('Оплата на защищённой странице шлюза — выберите монету (BTC / LTC / USDT) и отправьте перевод. Статус подписки обновится автоматически.') }}</p>
+      <a class="btn btn--primary" href="{{ invoice.checkout_url }}" rel="noopener">{{ _('Перейти к оплате →') }}</a>
+      {% elif invoice.payment_address %}
+      <label class="label" for="addr">{{ _('Адрес для оплаты') }}</label>
+      <div class="input-group">
+        <input class="input input--mono" id="addr" value="{{ invoice.payment_address }}" readonly spellcheck="false">
+        <button class="btn btn--ghost" type="button" data-copy="#addr" data-copied="✓">{{ _('Копировать') }}</button>
+      </div>
+      <p class="hint">{{ _('Отправляйте ровно указанную сумму. Зачтётся после подтверждений сети — обычно 10–40 минут.') }}</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <aside>
+    <div class="card center">
+      <h3 style="font-size:var(--fs-md)">{{ _('QR оплаты') }}</h3>
+      <div class="qr" style="margin:1rem auto" role="img" aria-label="{{ _('QR-код для оплаты') }}">
+        {% if invoice.checkout_url %}<canvas width="200" height="200" data-qr="{{ invoice.checkout_url }}"></canvas>
+        {% elif invoice.payment_address %}<canvas width="200" height="200" data-qr="{{ invoice.payment_address }}"></canvas>{% endif %}
+      </div>
+      {% if invoice.checkout_url %}
+      <p class="hint">{{ _('Сканируйте, чтобы открыть страницу оплаты на телефоне.') }}</p>
+      {% endif %}
+      <noscript><p class="hint">{{ _('Без JavaScript — откройте ссылку «Перейти к оплате» вручную.') }}</p></noscript>
+    </div>
+  </aside>
+</div>
+
+<p class="center" style="margin-top:1.5rem">
+  <a class="btn btn--ghost" href="{{ url_for('invoice', id=invoice.id) }}">{{ _('↻ Обновить статус') }}</a>
+  <a class="btn btn--quiet" href="{{ url_for('dashboard') }}">{{ _('Дашборд') }}</a>
+</p>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='qr.js') }}" defer></script>
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
+{% endblock %}

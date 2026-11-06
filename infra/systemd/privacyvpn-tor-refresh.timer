@@ -1,0 +1,12 @@
+[Unit]
+Description=Hourly refresh of the host Tor client (kills the stale-descriptor false onion alerts)
+
+[Timer]
+OnBootSec=20min
+OnUnitActiveSec=1h
+# Spread it off the monitor's 5-min tick so a probe rarely lands during the ~30s re-bootstrap.
+RandomizedDelaySec=90
+Persistent=true
+
+[Install]
+WantedBy=timers.target

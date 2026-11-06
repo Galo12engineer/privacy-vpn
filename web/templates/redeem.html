@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{# The form is a narrow input page; the RESULT is a receipt carrying a 24-character credential, and
+   --maxw-narrow (480px) left it 320px — the number wrapped on every screen size. #}
+{% block main_class %}container{% if not created and not extended %} container--narrow{% endif %}{% endblock %}
+{% block title %}{{ _('Погасить подарочный код') }} — privacyvpn VPN{% endblock %}
+
+{% block content %}
+{% if created %}
+{# capped rather than the full 1040px: a receipt stretched across a wide screen reads as empty #}
+<div style="max-width:660px">
+{# The only moment the server holds this number: the row keeps its HMAC, nothing else. #}
+<div class="page-head">
+  <h1>{{ _('Готово — доступ активирован') }}</h1>
+  <p class="muted">{{ _('Это ваш номер аккаунта. Он показывается один раз.') }}</p>
+</div>
+
+<div class="callout" role="note">
+  <div class="callout__label">{{ _('⚠ Сохраните номер прямо сейчас') }}</div>
+  <div class="token-display">
+    {# word-break:normal undoes .token-display's break-all, which split the number mid-group —
+       it may only wrap at the spaces. No min-width: on a wide card the number and Copy share
+       one row (407+72 of 564px measured). min-width is in the code's OWN em, so it scales with
+       the clamp: the number never gets squeezed below one line — the button wraps instead. #}
+    <code id="acct-number" style="word-break:normal;min-width:16em;font-size:clamp(1rem,3.4vw,1.6rem);letter-spacing:.06em">{{ created.number }}</code>
+    <button class="btn btn--primary" type="button" data-copy="#acct-number" data-copied="{{ _('Скопировано ✓') }}">{{ _('Копировать') }}</button>
+  </div>
+  <p style="margin:.6rem 0 0;font-size:var(--fs-sm)">{{ _('Номер — единственный способ войти. Сервер хранит только его хэш и восстановить номер не может: ни мы, ни поддержка. Уйдёте со страницы, не сохранив его, — доступ пропадёт навсегда. Сохраните в менеджере паролей.') }}</p>
+</div>
+
+<dl class="kv kv--inline" style="margin:1.25rem 0">
+  <dt>{{ _('Начислено') }}</dt><dd>{{ days_phrase(created.days) }}</dd>
+  <dt>{{ _('Действует до') }}</dt><dd class="mono">{{ created.expires_at }}</dd>
+  <dt>{{ _('Устройств') }}</dt><dd>{{ created.device_limit }}</dd>
+</dl>
+
+<p class="muted" style="font-size:var(--fs-sm)">{{ _('Вы уже вошли в кабинет на этом устройстве — можно сразу добавить устройство. Это не отменяет предыдущий абзац: сессия истечёт, номер останется.') }}</p>
+<p><a class="btn btn--primary btn--lg" href="{{ url_for('add_device') }}">{{ _('Добавить устройство') }}</a></p>
+</div>
+
+{% elif extended %}
+<div style="max-width:660px">
+<div class="page-head">
+  <h1>{{ _('Код погашен — подписка продлена') }}</h1>
+  <p class="muted">{{ _('Дни добавлены к текущему аккаунту. Номер аккаунта и устройства остались прежними — переустанавливать конфигурации не нужно.') }}</p>
+</div>
+<div class="banner banner--ok" role="status">
+  <span class="banner__icon">●</span>
+  <div class="banner__body">
+    <strong>+{{ days_phrase(extended.days) }}</strong>
+    <p>{{ _('Действует до') }} <span class="mono">{{ extended.expires_at }}</span></p>
+  </div>
+</div>
+<p style="margin-top:1.25rem"><a class="btn btn--primary" href="{{ url_for('dashboard') }}">{{ _('В кабинет') }}</a></p>
+</div>
+
+{% else %}
+<div class="page-head">
+  <h1>{{ _('Подарочный код') }}</h1>
+  <p class="muted">{{ _('Код вида TT-XXXX-XXXX-XXXX-XXXX — это оплаченный доступ. Срок начинает идти с момента погашения, а не с момента покупки.') }}</p>
+</div>
+
+{% if error %}
+<div class="banner banner--danger" role="alert" style="margin-bottom:1.25rem">
+  <span class="banner__icon">×</span>
+  <div class="banner__body"><p>{{ error }}</p></div>
+</div>
+{% endif %}
+
+{% if preview %}
+<form class="card" method="post" action="{{ url_for('redeem') }}" autocomplete="off">
+  <p class="muted" style="margin-top:0">{{ _('Код принят. Вот что он даёт:') }}</p>
+  <dl class="kv kv--inline" style="margin:0 0 1rem">
+    <dt>{{ _('Срок') }}</dt><dd>{{ days_phrase(preview.days) }}</dd>
+    <dt>{{ _('Устройств') }}</dt><dd>{{ preview.device_limit }}</dd>
+  </dl>
+  {% if logged_in %}
+  <p style="font-size:var(--fs-sm)">{{ _('Дни добавятся к вашему текущему аккаунту, поверх оставшегося срока. Новый номер не выдаётся, устройства остаются на месте.') }}</p>
+  {% else %}
+  <p style="font-size:var(--fs-sm)">{{ _('Будет создан новый аккаунт, и его номер покажется один раз — сохранить его нужно сразу.') }}</p>
+  <div class="callout" role="note" style="margin:.75rem 0">
+    <div class="callout__label">{{ _('Уже покупали у нас?') }}</div>
+    <p style="margin:0;font-size:var(--fs-sm)">{{ _('Тогда сначала') }} <a href="{{ url_for('login') }}">{{ _('войдите по номеру аккаунта') }}</a> {{ _('и вернитесь сюда — код продлит существующий доступ, а не создаст второй. Иначе устройства придётся настраивать заново.') }}</p>
+  </div>
+  {% endif %}
+  <input type="hidden" name="token" value="{{ token }}">
+  <button class="btn btn--primary btn--lg btn--block" type="submit" name="action" value="redeem">{{ _('Погасить код') }}</button>
+</form>
+{% else %}
+<form class="card" method="post" action="{{ url_for('redeem') }}" autocomplete="off">
+  <div class="field">
+    <label class="label" for="gift">{{ _('Код') }}</label>
+    <input class="input input--mono input--lg" id="gift" name="token"
+           placeholder="TT-XXXX-XXXX-XXXX-XXXX" maxlength="64" value="{{ token }}"
+           autocomplete="off" spellcheck="false" autocapitalize="characters" autofocus
+           aria-describedby="gift-hint">
+    <p class="hint" id="gift-hint">{{ _('Регистр и дефисы не важны — можно вставить как есть. Это не номер аккаунта: номер вводится на странице входа.') }}</p>
+  </div>
+  <button class="btn btn--primary btn--lg btn--block" type="submit" name="action" value="check">{{ _('Проверить код') }}</button>
+  {% if logged_in %}
+  <p class="hint" style="margin-top:.75rem">{{ _('Вы вошли в аккаунт — код продлит именно его.') }}</p>
+  {% else %}
+  <p class="hint" style="margin-top:.75rem">{{ _('Уже есть аккаунт?') }} <a href="{{ url_for('login') }}">{{ _('Войдите') }}</a> {{ _('до погашения — тогда код продлит его, а не создаст второй.') }}</p>
+  {% endif %}
+</form>
+{% endif %}
+
+<p class="center muted" style="margin-top:1.5rem;font-size:var(--fs-sm)">
+  {{ _('Нет кода?') }} <a href="{{ url_for('purchase') }}">{{ _('Купить доступ') }}</a> {{ _('— оплата криптой, без имени и email.') }}
+</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Tests / coverage
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local/dev databases (prod is Postgres; demo.db is produced by the seed script)
+*.db
+*.sqlite
+*.sqlite3
+
+# SECRETS / env — NEVER commit
+.env
+.env.local
+*.pem
+*.key
+id_ed25519*
+
+# Backups / deploy artefacts
+backups-out/
+*.bak
+*.bak.*
+*.tgz
+
+# OS / editor
+.DS_Store
+*.swp
+
+# Local Claude settings
+.claude/settings.local.json
+
+# Playwright MCP session logs/screenshots
+.playwright-mcp/
+
+# design tooling (hallmark): local state, regenerated on demand
+.hallmark/
+
+# Gift-code stock: scripts/gift_txt.py writes ready-to-sell .txt files here by default.
+# Each file is paid access to whoever holds it — it must never reach the history.
+gift-out/

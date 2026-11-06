@@ -1,0 +1,147 @@
+{% extends "admin_base.html" %}
+{% block title %}Гифты{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p class="admin-kicker">биллинг</p>
+  <h1>Подарочные коды</h1>
+  <p class="muted">Оплаченный доступ в виде кода: покупатель гасит его на <span class="mono">/redeem</span> и получает готовый аккаунт. Счёт не создаётся вообще — поэтому гифт можно продавать на чужой площадке, где криптоплатёж принять нельзя.</p>
+</div>
+
+{% if issued %}
+{# The only moment these strings exist on the server — the rows keep HMACs. #}
+<div class="callout" role="note" style="margin-bottom:1.5rem">
+  <div class="callout__label">⚠ {{ issued.tokens|length }} код(ов) по {{ issued.days }} дн. — показываются один раз</div>
+  <div class="token-display">
+    {# real newlines, not <br>: the copy button reads textContent #}
+    <code id="new-gifts" style="white-space:pre-wrap;font-size:var(--fs-md);letter-spacing:.06em">{% for t in issued.tokens %}{{ t }}
+{% endfor %}</code>
+    <button class="btn btn--primary" type="button" data-copy="#new-gifts" data-copied="Скопировано ✓">Копировать все</button>
+  </div>
+  <p style="margin:.6rem 0 0;font-size:var(--fs-sm)"><strong>Повторно их не покажет никто и никогда</strong> — в базе лежат только хэши. Уйдёте со страницы или обновите её — коды потеряны, а выпущенные строки останутся висеть непогашенными. Сохраните прямо сейчас.</p>
+</div>
+{% endif %}
+
+{% if error %}
+<div class="banner banner--danger" role="alert" style="margin-bottom:1rem">
+  <span class="banner__icon">×</span><div class="banner__body"><p>{{ error }}</p></div>
+</div>
+{% endif %}
+
+<div class="banner banner--info" style="margin-bottom:1.25rem">
+  <span class="banner__icon">i</span>
+  <div class="banner__body">
+    <strong>Чего здесь нет и не будет</strong>
+    <p>Связки «код → аккаунт» не существует: номер аккаунта рождается у покупателя в момент погашения, мы его не видим. Дата погашения огрублена до дня — иначе точное время само по себе указывало бы на созданный в ту секунду аккаунт. Поэтому «узнать, чей это код» нельзя даже с доступом к базе.</p>
+  </div>
+</div>
+
+<div class="banner banner--warn" style="margin-bottom:1.25rem">
+  <span class="banner__icon">!</span>
+  <div class="banner__body">
+    <strong>Гифт — это деньги на предъявителя</strong>
+    <p>Кто держит строку, тот и получит доступ: проверок нет, ни при продаже, ни при погашении. Утекший код гасится первым, кто его увидит. Отсюда правило: не пересылать коды там, где остаётся история, и выключать нераспроданный остаток партии, если площадка оказалась дырявой.</p>
+  </div>
+</div>
+
+<section>
+  <div class="page-head" style="margin-bottom:1rem"><h2>Выпустить партию</h2></div>
+  <form class="card" method="post" action="{{ admin_path }}/gifts">
+    <fieldset class="form-group">
+      <legend>Что даёт код</legend>
+      <div class="form-grid form-grid--3">
+        <div class="field">
+          <label class="label" for="g-plan">Тариф</label>
+          <select class="select" id="g-plan" name="plan_id">
+            <option value="">— не из тарифа —</option>
+            {% for p in plans %}
+            <option value="{{ p.id }}">{{ p.name }} · {{ p.duration_days }} дн. · {{ p.device_limit }} устр.</option>
+            {% endfor %}
+          </select>
+          <p class="hint">Из тарифа берутся дни и лимит устройств, а его код попадает в журнал подписок — погашенный гифт там неотличим от обычной покупки того же тарифа.</p>
+        </div>
+        <div class="field">
+          <label class="label" for="g-days">Дней <span class="opt">— вместо тарифа</span></label>
+          <input class="input input--mono" id="g-days" name="custom_days" type="number" min="1" max="{{ max_grant_days }}" placeholder="30">
+          <p class="hint">Заполнено — победит тариф. Пусто — берём срок тарифа. Лимит устройств тогда серверный по умолчанию.</p>
+        </div>
+        <div class="field">
+          <label class="label" for="g-count">Сколько кодов</label>
+          <input class="input input--mono" id="g-count" name="count" type="number" min="1" max="{{ max_batch }}" value="5" required>
+          <p class="hint">До {{ max_batch }} за раз: партия показывается одним экраном, и всё, что с него не скопировали, потеряно.</p>
+        </div>
+      </div>
+    </fieldset>
+    <fieldset class="form-group">
+      <legend>Ограничения <span class="opt">— необязательно</span></legend>
+      <div class="form-grid">
+        <div class="field">
+          <label class="label" for="g-exp">Погасить до</label>
+          <input class="input input--mono" id="g-exp" name="expires_at" type="date">
+          <p class="hint">Дедлайн ПОГАШЕНИЯ, а не конец подписки: дни начинают идти с момента, когда код погасили. Включительно, до конца дня (UTC). Пусто — без срока.</p>
+        </div>
+        <div class="field">
+          <label class="label" for="g-note">Заметка <span class="opt">— для себя</span></label>
+          <input class="input" id="g-note" name="note" maxlength="200" placeholder="партия для площадки X, 2026-08">
+          <p class="hint">Видна только здесь. Пишите, куда ушла партия — это единственный способ понять потом, какую именно выключать.</p>
+        </div>
+      </div>
+    </fieldset>
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">Выпустить коды</button>
+      <span class="note">коды покажутся сразу под шапкой — один раз</span>
+    </div>
+  </form>
+</section>
+
+<section style="margin-top:2rem">
+  <div class="page-head" style="margin-bottom:1rem"><h2>Выпущенные</h2>
+    <p class="muted">Самих кодов в таблице нет и быть не может — в базе только хэши.</p></div>
+  <div class="table-wrap">
+    <table class="tbl">
+      <caption class="skip">Выпущенные подарочные коды</caption>
+      <thead>
+        <tr>
+          <th scope="col">заметка</th>
+          <th scope="col" class="num">дней</th>
+          <th scope="col">тариф</th>
+          <th scope="col">выпущен</th>
+          <th scope="col">погасить до</th>
+          <th scope="col">погашен</th>
+          <th scope="col">статус</th>
+          <th scope="col">изменить</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for g in gifts %}
+        <tr>
+          <td>{{ g.note or '—' }}</td>
+          <td class="num">{{ g.days }}{% if g.device_limit %}<div class="meta">{{ g.device_limit }} устр.</div>{% endif %}</td>
+          <td class="mono">{{ g.plan }}</td>
+          <td>{{ g.created_at }}</td>
+          <td>{{ g.expires_at }}</td>
+          <td>{{ g.redeemed_at }}</td>
+          <td>
+            {% if g.status == 'redeemed' %}<span class="badge">погашен</span>
+            {% elif g.status == 'disabled' %}<span class="badge badge--danger">выключен</span>
+            {% elif g.status == 'expired' %}<span class="badge badge--danger">просрочен</span>
+            {% else %}<span class="badge badge--ok">активен</span>{% endif %}
+          </td>
+          <td>
+            {% if g.status == 'redeemed' %}
+            <span class="muted">—</span>
+            {% else %}
+            <form method="post" action="{{ admin_path }}/gifts/{{ g.id }}" class="inline-edit">
+              <input type="hidden" name="is_active" value="{{ '0' if g.is_active else '1' }}">
+              <button class="btn btn--ghost btn--sm" type="submit">{{ 'Выключить' if g.is_active else 'Включить' }}</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="empty">Кодов пока нет — выпустите партию выше.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

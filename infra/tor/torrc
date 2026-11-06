@@ -1,0 +1,11 @@
+# Tor hidden service for the cabinet's .onion mirror (bypasses Cloudflare, no mandatory CF challenge).
+# It binds to the reverse proxy / control-plane. The .onion address appears in HiddenServiceDir/hostname.
+
+HiddenServiceDir /var/lib/tor/vpn_cabinet/
+# Under docker, Tor is its own container: point at the control-plane service BY NAME, not 127.0.0.1.
+HiddenServicePort 80 control-plane:8000
+
+# Onion service only, no exit traffic
+SocksPort 0
+# v3 address version by default
+HiddenServiceVersion 3

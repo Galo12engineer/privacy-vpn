@@ -1,0 +1,43 @@
+#cloud-config
+# A FILLED-IN cloud-init example for a VLESS+Reality node (RAM-only exit).
+# This is node.yaml with EXAMPLE values substituted — replace every <...> before uploading to a VPS.
+# The token/subnet values come from the CP admin console when the node is created (/admin/nodes,
+# protocol vless_reality). The order is in docs/deploy.md §6.2. System-disk FDE is handled at the
+# image level (LUKS).
+#
+# NOTE: Oracle free tier (and some other clouds) name the WAN interface ens3/enp0s3, not eth0.
+#    Check on the node: `ip -o -4 route show default | awk '{print $5}'` → put it in AGENT_WAN_INTERFACE.
+
+write_files:
+  - path: /etc/profile.d/vpn-agent-env.sh
+    permissions: "0600"
+    content: |
+      # --- control-plane ---
+      export CP_BASE_URL="https://privacyvpn.example.com"            # or https://<...>.onion (the agent goes over Tor)
+      export AGENT_REPO_URL="https://codeberg.org/privacyvpn/vpn.git"  # where the node pulls its code from (pin a tag/commit!)
+      export AGENT_REGISTRATION_TOKEN="REPLACE_WITH_ONE_TIME_TOKEN_FROM_ADMIN_NODES"
+
+      # --- node network (from the node card in the CP) ---
+      export AGENT_SUBNET_V4="10.77.0.0/24"
+      export AGENT_SUBNET_V6=""                               # empty -> IPv6 null-route (leak protection)
+      export AGENT_WAN_INTERFACE="ens3"                       # VERIFY THIS (Oracle: ens3; many KVMs: eth0)
+      export AGENT_DNS_LISTEN_IP="10.77.0.1"                  # = the first host of the subnet (server_address)
+
+      # --- transport: VLESS+Reality ---
+      export AGENT_PROTOCOL="vless_reality"
+      export AGENT_WG_LISTEN_PORT="443"                       # reality port; MUST equal the node's endpoint_port in the CP
+      export AGENT_WG_LISTEN_PORT_ALT="443"
+      # Pin the Xray version (supply chain / reproducibility). v26.3.27 was run through our render
+      # with `xray -test` during the de-risk. Check the current tag: github.com/XTLS/Xray-core/releases
+      export AGENT_XRAY_VERSION="v26.3.27"
+
+      # The control-plane IP for the control channel (CP->agent). Empty → port 8443 is closed from
+      # the WAN (nft only admits these CIDRs). Put the CP host's /32 address here.
+      export AGENT_CONTROL_ALLOW_CIDRS="203.0.113.10/32"
+
+runcmd:
+  - swapoff -a || true
+  - [ bash, -lc, "source /etc/profile.d/vpn-agent-env.sh && git clone --depth 1 \"$AGENT_REPO_URL\" /opt/vpn-src && bash /opt/vpn-src/infra/provision-node.sh" ]
+
+# the cloud-init log goes to tmpfs (we do not accumulate it on disk)
+output: {all: "| tee /run/cloud-init-output.log"}

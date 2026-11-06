@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="{{ lang|default('en') }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>{% block title %}privacyvpn VPN{% endblock %}</title>
+{% with meta_title = self.title() %}{% include "_meta.html" %}{% endwith %}
+<link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+<a class="skip" href="#main">{{ _('К содержимому') }}</a>
+
+<header class="topbar">
+  <a class="wordmark" href="{{ url_for('landing') }}" aria-label="privacyvpn">
+    <span class="wm-1">privacy</span><span class="wm-dot">·</span><span class="wm-2"><span>v</span><span>p</span><span>n</span></span>
+  </a>
+  {% block nav %}
+  <nav class="topbar__nav" aria-label="{{ _('Кабинет') }}">
+    {% set page = page|default('') %}
+    <a href="{{ url_for('dashboard') }}" {{ 'aria-current=page' if page == 'dashboard' }}>{{ _('Дашборд') }}</a>
+    <a href="{{ url_for('add_device') }}" {{ 'aria-current=page' if page == 'devices' }}>{{ _('Устройства') }}</a>
+    <a href="{{ url_for('purchase') }}" {{ 'aria-current=page' if page == 'renew' }}>{{ _('Продлить') }}</a>
+    <a href="{{ url_for('guides') }}" {{ 'aria-current=page' if page == 'guides' }}>{{ _('Гайды') }}</a>
+    <a href="{{ url_for('support') }}" {{ 'aria-current=page' if page == 'support' }}>{{ _('Поддержка') }}</a>
+  </nav>
+  {% endblock %}
+  <div class="topbar__spacer"></div>
+  <div class="topbar__actions">
+    <nav class="seg" aria-label="{{ _('Язык') }}">
+      <a href="/lang?to=en&amp;back={{ request.url.path }}" {{ 'aria-current=true' if lang == 'en' }} hreflang="en">EN</a>
+      <a href="/lang?to=ru&amp;back={{ request.url.path }}" {{ 'aria-current=true' if lang == 'ru' }} hreflang="ru">RU</a>
+    </nav>
+    <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false" aria-label="{{ _('Тема') }}">◐</button>
+    {% block topbar_extra %}{% endblock %}
+  </div>
+</header>
+
+<main id="main" class="{% block main_class %}container{% endblock %}">
+  {% block content %}{% endblock %}
+</main>
+
+{% block footer %}
+<footer class="footer">
+  <div class="footer__inner">
+    <div>
+      <span class="wordmark" style="font-size:var(--fs-md)"><span class="wm-1">privacy</span><span class="wm-dot">·</span><span class="wm-2"><span>v</span><span>p</span><span>n</span></span></span>
+      <div class="trust-row"><span class="badge badge--ok badge--none">no-logs</span><span class="badge badge--info badge--none">no-KYC</span></div>
+    </div>
+    <div><h5>{{ _('Доверие') }}</h5><ul>
+      <li><a href="{{ links.nolog }}">{{ _('No-logs — проверяемый') }}</a></li>
+      <li><a href="{{ links.canary }}">{{ _('Warrant canary — почему не ведём') }}</a></li>
+      {# The "External audit (on the roadmap)" item was removed: there is no audit, and a line in the
+         NAVIGATION of every page advertised precisely its absence. Silence is not an overclaim; the
+         voluntary admissions of where we are not ready (no FDE, repo unpublished) stay on
+         /transparency. #}
+      <li><a href="{{ links.ram }}">{{ _('Ноды: без данных пользователей') }}</a></li>
+    </ul></div>
+    <div><h5>{{ _('Правовое') }}</h5><ul>
+      <li><a href="{{ url_for('support') }}">{{ _('Поддержка') }}</a></li>
+      <li><a href="{{ url_for('faq') }}">FAQ</a></li>
+      <li><a href="{{ links.terms }}">{{ _('Условия') }}</a></li>
+      <li><a href="{{ links.aup }}">AUP</a></li>
+      <li><a href="{{ links.privacy }}">{{ _('Конфиденциальность') }}</a></li>
+      {# abuse@ was removed from the shared cabinet footer: the domain has no MX, mail dies in the
+         sender's queue, and in a "contacts" slot a dead address catches people who need support.
+         The AUP link one line above leads to where the address does appear — as a compliance
+         contact. #}
+      <li><a href="{{ links.onion }}">.onion</a></li>
+    </ul></div>
+  </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
+{% endblock %}
+</body>
+</html>

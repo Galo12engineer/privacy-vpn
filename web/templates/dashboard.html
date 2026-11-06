@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% set page = 'dashboard' %}
+{% block title %}{{ _('Дашборд') }} — privacyvpn VPN{% endblock %}
+{% block topbar_extra %}<a class="btn btn--ghost btn--sm" href="/logout">{{ _('Выйти') }}</a>{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <p class="mono subtle" style="font-size:var(--fs-xs);letter-spacing:.08em">{{ _('АККАУНТ') }} {{ account_number_masked }}</p>
+  <h1>{{ _('Дашборд') }}</h1>
+</div>
+
+{# A live pending payment — the way back to an invoice whose tab was lost. Without this, pressing
+   Back on the payment page (Firefox "Document Expired") stranded the address with no route to it. #}
+{# Removal that the node did not confirm. We deliberately do NOT drop the DB row in that case:
+   a peer left on the node keeps working, so "deleted" would be a lie that still grants access. #}
+{% if request.query_params.get('remove_failed') %}
+<div class="banner banner--danger" role="status" style="margin-bottom:1.5rem">
+  <span class="banner__icon">×</span>
+  <div class="banner__body"><strong>{{ _('Устройство не удалено') }}</strong>
+    <p>{{ _('Сервер локации не подтвердил удаление, поэтому устройство осталось на месте — иначе доступ продолжал бы работать. Попробуйте ещё раз через минуту.') }}</p></div>
+</div>
+{% endif %}
+
+{% if pending_invoice %}
+<div class="banner banner--warn" role="status" style="margin-bottom:1.5rem">
+  <span class="banner__icon">⏳</span>
+  <div class="banner__body">
+    <strong>{% if pending_invoice.awaiting %}{{ _('Платёж получен — ждём подтверждений сети') }}{% else %}{{ _('Есть неоплаченный счёт') }}{% endif %}</strong>
+    <p>{% if pending_invoice.amount %}{{ pending_invoice.amount }} {{ pending_invoice.currency }}. {% endif %}{% if pending_invoice.deadline and not pending_invoice.awaiting %}{{ _('Оплатите до {deadline}.').format(deadline=pending_invoice.deadline) }} {% endif %}<a href="{{ url_for('invoice', id=pending_invoice.id) }}">{{ _('Открыть счёт и адрес оплаты →') }}</a></p>
+  </div>
+</div>
+{% endif %}
+
+{% if status == 'active' %}
+<div class="banner banner--ok" role="status" style="margin-bottom:1.5rem">
+  <span class="banner__icon">●</span>
+  <div class="banner__body"><strong>{{ _('Подписка активна') }}</strong>
+    <p>{{ _('Действует до') }} <b>{{ expires_at }}</b>{% if days_left is not none %} · {{ _('осталось') }} {{ days_phrase(days_left) }}{% endif %}</p></div>
+</div>
+{% elif status == 'grace' %}
+<div class="banner banner--warn" role="status" style="margin-bottom:1.5rem">
+  <span class="banner__icon">!</span>
+  <div class="banner__body"><strong>{{ _('Льготный период') }}</strong>
+    <p>{{ _('Подписка истекла. Доступ до') }} <b>{{ grace_until }}</b>. {{ _('Продлите, чтобы не потерять устройства.') }}</p></div>
+</div>
+{% else %}
+<div class="banner banner--danger" role="status" style="margin-bottom:1.5rem">
+  <span class="banner__icon">×</span>
+  <div class="banner__body"><strong>{{ _('Подписка истекла') }}</strong>
+    <p>{{ _('Туннели отключены. Продлите доступ.') }}</p></div>
+</div>
+{% endif %}
+
+<div class="split">
+  <section>
+    <div class="card__head">
+      <h2 style="font-size:var(--fs-lg)">{{ _('Устройства') }}</h2>
+      <span class="muted" style="font-size:var(--fs-sm)">{{ device_count }} / {{ device_limit }}</span>
+    </div>
+
+    <div class="device-list">
+      {% for d in devices %}
+      <div class="device">
+        <div class="device__main">
+          <div class="device__name">{{ d.name }}</div>
+          <div class="device__meta">{{ d.location }} · {{ d.ip }} · {{ d.added }}</div>
+        </div>
+        <form method="post" action="{{ url_for('device_delete', id=d.id) }}">
+          <button class="btn btn--danger btn--sm" type="submit">{{ _('Удалить') }}</button>
+        </form>
+      </div>
+      {% else %}
+      <p class="muted">{{ _('Устройств пока нет.') }}</p>
+      {% endfor %}
+    </div>
+
+    {% if device_count >= device_limit %}
+    <div class="banner banner--warn" style="margin-top:1rem">
+      <span class="banner__icon">!</span>
+      <div class="banner__body"><strong>{{ _('Достигнут лимит устройств') }}</strong><p>{{ _('Удалите одно, чтобы добавить новое.') }}</p></div>
+    </div>
+    {% else %}
+    <a class="btn btn--ghost" href="{{ url_for('add_device') }}" style="margin-top:1rem">{{ _('+ Добавить устройство') }}</a>
+    {% endif %}
+  </section>
+
+  <aside class="stack" style="--space:1rem">
+    <div class="card">
+      <h3 style="font-size:var(--fs-md);margin-bottom:1rem">{{ _('Подписка') }}</h3>
+      <dl class="kv">
+        <dt>{{ _('Статус') }}</dt>
+        {# Three separate calls instead of a dict INSIDE the call. A dict assembles the translation key
+           at render time, while check_i18n scans the template text and sees only the string literal
+           in the parentheses — so these three strings counted as unused, the orphan sweep deleted
+           them, and the English cabinet would have shown the Russian status words. A translation key
+           must be visible to the checker by eye. #}
+        <dd><span class="badge badge--{{ 'ok' if status == 'active' else ('warn' if status == 'grace' else 'danger') }}">{% if status == 'active' %}{{ _('активна') }}{% elif status == 'grace' %}{{ _('льготный период') }}{% else %}{{ _('истекла') }}{% endif %}</span></dd>
+        <dt>{{ _('Действует до') }}</dt><dd>{{ expires_at or '—' }}</dd>
+        <dt>{{ _('Лимит устройств') }}</dt><dd>{{ device_limit }}</dd>
+      </dl>
+      <a class="btn btn--primary btn--block" href="{{ url_for('purchase') }}">{{ _('Продлить доступ') }}</a>
+      {# For a returning customer redemption is an account operation, not a purchase. #}
+      <p class="hint" style="margin:.75rem 0 0;text-align:center">{{ _('Есть подарочный код?') }} <a href="{{ url_for('redeem') }}">{{ _('Погасить код') }}</a> {{ _('— дни добавятся к этому же аккаунту.') }}</p>
+    </div>
+
+    <div class="card">
+      <div class="card__head" style="margin-bottom:.5rem">
+        <h3 style="font-size:var(--fs-md);margin:0">{{ _('Напоминание о продлении') }}</h3>
+        <span class="badge badge--none">opt-in</span>
+      </div>
+      <p class="muted" style="font-size:var(--fs-sm);margin-bottom:.85rem">{{ _('Не обязательно. Email — только ради письма об истечении. Храним отдельно от аккаунта, удаляем по запросу.') }}</p>
+      <form method="post" action="{{ url_for('email_optin') }}">
+        <div class="input-group">
+          <input class="input" type="email" name="email" placeholder="you@example.com" autocomplete="off">
+          <button class="btn btn--ghost" type="submit">{{ _('Сохранить') }}</button>
+        </div>
+      </form>
+      <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">
+      <p class="muted" style="font-size:var(--fs-sm);margin-bottom:.6rem">{{ _('Потеряли устройство или подозреваете кражу токена? Завершите все сессии — доступ по номеру аккаунта останется.') }}</p>
+      <form method="post" action="/logout-all">
+        <button class="btn btn--ghost btn--sm" type="submit">{{ _('Выйти на всех устройствах') }}</button>
+      </form>
+    </div>
+  </aside>
+</div>
+{% endblock %}

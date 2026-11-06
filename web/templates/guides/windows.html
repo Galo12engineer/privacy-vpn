@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% set page = 'guides' %}
+{% block title %}WireGuard — Windows · privacyvpn VPN{% endblock %}
+{% block main_class %}container guide{% endblock %}
+
+{% block content %}
+<p class="term-cmd" aria-hidden="true"><span>privacyvpn</span> <span class="pct">~ %</span> <span><b>man</b> wireguard-windows</span></p>
+<div class="page-head">
+  <h1>{{ _('Windows — подключение') }}</h1>
+  <p class="lede" style="max-width:60ch">{{ _('Официальный клиент WireGuard; своего приложения у нас нет. Приватный ключ генерируется в вашем браузере и не покидает устройство.') }}</p>
+</div>
+
+<ol class="lp-steps" role="list">
+  <li><span class="n" aria-hidden="true">01</span><div><p>{{ _('Установите официальный клиент') }} <b>WireGuard for Windows</b> — <a href="https://www.wireguard.com/install/">wireguard.com/install</a>.</p></div></li>
+  <li><span class="n" aria-hidden="true">02</span><div><p>{{ _('В кабинете добавьте устройство и скачайте') }} <code>.conf</code>.</p></div></li>
+  <li><span class="n" aria-hidden="true">03</span><div><p>{{ _('В приложении:') }} <b>Import tunnel(s) from file</b> → {{ _('выберите') }} <code>.conf</code>.</p></div></li>
+  <li><span class="n" aria-hidden="true">04</span><div><p>{{ _('Нажмите') }} <b>Activate</b> — {{ _('туннель поднят.') }}</p></div></li>
+</ol>
+
+<div class="term-win" style="margin-top:1.75rem">
+  <div class="lp-cells lp-cells--2">
+    <section class="lp-cell">
+      <div class="idx" aria-hidden="true"><span>kill-switch</span><span class="ln"></span></div>
+      <h2>{{ _('Kill-switch') }}</h2>
+      <p class="muted">{{ _('В свойствах туннеля включите') }} <b>Block untunneled traffic (kill-switch)</b>. {{ _('Опция доступна при полном туннеле') }} — AllowedIPs = <code>0.0.0.0/0, ::/0</code>. {{ _('При разрыве VPN трафик блокируется, а не уходит в открытую сеть.') }}</p>
+    </section>
+    <section class="lp-cell">
+      <div class="idx" aria-hidden="true"><span>dns</span><span class="ln"></span></div>
+      <h2>{{ _('DNS и утечки') }}</h2>
+      <p class="muted">{{ _('DNS уже прописан в конфиге — наш резолвер на самой ноде, без логов. Проверить утечки можно любым dnsleak-тестом.') }} {{ _('Если сеть режет порт 51820 — используйте Endpoint') }} <code>:443</code>.</p>
+    </section>
+  </div>
+</div>
+
+<p class="mono-note" style="margin-top:1.5rem"><span aria-hidden="true"># </span>{{ _('Vanilla WireGuard может детектироваться DPI в некоторых сетях (RU/IR/CN). Обфускация — на дорожной карте (требует не-официального клиента).') }}</p>
+<p style="margin-top:1.5rem"><a href="/guides">← {{ _('Гайды') }}</a></p>
+{% endblock %}

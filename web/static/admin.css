@@ -1,0 +1,93 @@
+/* ============================================================
+   privacyvpn — ADMIN
+   Additive layer on top of style.css. SAME design system as the
+   live cabinet/landing (warm paper light + dark via prefers-color-
+   scheme / theme toggle). No palette override, no external
+   resources, works without JS.
+
+   Admin is the *denser* member of that system: same cards, badges,
+   banners, buttons and tables as the cabinet — just packed tighter
+   and with a couple of components base doesn't ship (inline row
+   editor, grouped create forms). style.css already carries the
+   .admin scope (--maxw, surface topbar, .stat, .health, .toolbar).
+   ============================================================ */
+
+/* denser nav in the admin topbar */
+.admin .topbar__nav a { font-size: var(--fs-sm); }
+
+/* mono kicker above a page title (mirrors the cabinet dashboard) */
+.admin-kicker {
+  font-family: var(--font-mono); font-size: var(--fs-xs);
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-3); margin: 0 0 .4rem;
+}
+
+/* ---------- stat cards (base .stat-grid/.stat) — small extras ---------- */
+.stat .v small { font-size: var(--fs-md); color: var(--ink-3); font-weight: 400; }
+.stat .v.is-featured { color: var(--accent); font-size: var(--fs-lg); }
+.stat .d.is-alert { color: var(--danger); }
+.stat .d .dot { color: var(--danger); }
+
+/* ---------- denser data tables ---------- */
+.tbl--dense th, .tbl--dense td { padding: .6rem .8rem; }
+.tbl .cellcode { font-family: var(--font-mono); }
+.tbl .stack2 { display: grid; gap: .12rem; }
+.tbl .stack2 .meta { font-size: var(--fs-xs); color: var(--ink-3); font-family: var(--font-mono); }
+.tbl .metric { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--ink-2); white-space: nowrap; }
+.tbl .metric b { color: var(--ink); font-weight: 600; }
+.tbl .freshness { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--ink-3); white-space: nowrap; }
+.tbl .empty { text-align: center; color: var(--ink-3); padding: 1.5rem 1rem !important; }
+.tbl .proto { color: var(--ink-2); }
+.tag-star { color: var(--warn); font-weight: 700; }
+
+/* Base sets `.banner__body strong { display: block }` for the banner TITLE, which is correct there —
+   but it also caught every emphasis inside a banner paragraph, so a sentence carrying an inline
+   <strong> rendered as three stacked lines mid-sentence. Scoped to `p strong` so the title (a direct
+   child of .banner__body) keeps its block behaviour, and to `.admin` so the cabinet is untouched. */
+.admin .banner__body p strong { display: inline; margin: 0; }
+
+/* ---------- inline row editor (plans) ---------- */
+.inline-edit {
+  display: flex; flex-wrap: wrap; align-items: flex-end;
+  gap: .5rem; justify-content: flex-end;
+}
+.inline-edit .fld { display: grid; gap: .2rem; }
+.inline-edit .fld > span {
+  font-size: 10px; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--ink-3); font-weight: 600;
+}
+.inline-edit .input, .inline-edit .select { padding: .38rem .5rem; font-size: var(--fs-sm); }
+.inline-edit .input { font-variant-numeric: tabular-nums; text-align: right; }
+.inline-edit .select {
+  padding-right: 1.7rem;
+  background-position: calc(100% - 11px) 55%, calc(100% - 6px) 55%;
+}
+.w-price { width: 5.6rem; }
+.w-num   { width: 3.4rem; }
+.w-sel   { width: 4.8rem; }
+
+/* ---------- grouped create forms ---------- */
+.form-group { border: 0; margin: 0 0 1.5rem; padding: 0; }
+.form-group:last-of-type { margin-bottom: .5rem; }
+.form-group > legend {
+  font-size: var(--fs-xs); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; width: 100%;
+  padding: 0 0 .5rem; margin: 0 0 1rem; border-bottom: 1px solid var(--line);
+}
+.form-group > legend .opt {
+  color: var(--ink-3); font-weight: 400; text-transform: none; letter-spacing: 0;
+}
+.form-grid { display: grid; gap: 1rem 1.15rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.form-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.form-grid .span-2 { grid-column: span 2; }
+.form-grid .field { margin: 0; }
+.form-actions { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; margin-top: .3rem; }
+.form-actions .note { font-size: var(--fs-xs); color: var(--ink-3); }
+
+/* copy button sits flush inside the token reveal */
+.token-display .btn { flex: none; }
+
+@media (max-width: 720px) {
+  .form-grid, .form-grid--3 { grid-template-columns: 1fr; }
+  .form-grid .span-2 { grid-column: auto; }
+}

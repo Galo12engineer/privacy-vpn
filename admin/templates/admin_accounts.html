@@ -1,0 +1,279 @@
+{% extends "admin_base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Аккаунты{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p class="admin-kicker">поддержка</p>
+  <h1>Аккаунты</h1>
+  <p class="muted">Найти аккаунт по номеру, который назвал клиент, и продлить вручную — если оплата
+    прошла мимо (поздний/раздельный платёж, договорённость). Номер нигде не хранится: сверяем хэш.</p>
+</div>
+
+{% if created %}
+{# The only moment the server holds the number at all. The database keeps only the HMAC
+   (models/account.py); the number never reaches a log or a URL, so there is physically nothing
+   to show a second time. #}
+<div class="callout" role="note" style="margin-bottom:1.5rem">
+  <div class="callout__label">⚠ Номер нового аккаунта — показывается один раз</div>
+  <div class="token-display">
+    <code id="new-acct">{{ created.number }}</code>
+    <button class="btn btn--primary" type="button" data-copy="#new-acct" data-copied="Скопировано ✓">Копировать</button>
+  </div>
+  <p style="margin:.6rem 0 0;font-size:var(--fs-sm)"><strong>Повторно его не покажет никто и никогда</strong> — сервер хранит только хэш номера и восстановить номер не может. Уйдёте со страницы или обновите её — доступ к аккаунту потерян навсегда. Передайте номер клиенту и сохраните себе прямо сейчас.</p>
+  <dl class="kv kv--inline" style="margin-top:.75rem">
+    <dt>Аккаунт</dt><dd class="mono">{{ created.masked }}</dd>
+    <dt>Начислено</dt><dd>{{ created.days }} дн.</dd>
+    <dt>Действует до</dt><dd class="mono">{{ created.expires_at }}</dd>
+    <dt>Устройств</dt><dd>{{ created.device_limit }}</dd>
+  </dl>
+</div>
+{% endif %}
+{% if create_error %}
+<div class="banner banner--danger" role="alert" style="margin-bottom:1.25rem">
+  <span class="banner__icon">×</span>
+  <div class="banner__body"><strong>Аккаунт не создан</strong>
+    <p>Выберите тариф или укажите число дней от 1 до {{ max_grant_days }}.</p></div>
+</div>
+{% endif %}
+{% if granted %}
+<div class="banner banner--ok" role="status" style="margin-bottom:1.25rem">
+  <span class="banner__icon">●</span>
+  <div class="banner__body"><strong>Продлено на {{ granted }} дн.</strong>
+    <p>Новый срок действия — ниже. Аккаунт активен.
+      {% if settled_invoice %}Грант связан с инвойсом <span class="mono">{{ settled_invoice }}</span> —
+      повторно автоматика его не зачтёт.{% else %}Грант ни с каким инвойсом не связан
+      (подарочный): если по инвойсу придут монеты, они зачтутся отдельно.{% endif %}</p></div>
+</div>
+{% endif %}
+{% if already_credited %}
+<div class="banner banner--warn" role="status" style="margin-bottom:1.25rem">
+  <span class="banner__icon">!</span>
+  <div class="banner__body"><strong>Дни НЕ добавлены — этот инвойс уже зачтён</strong>
+    <p>Автоматика зачла его раньше вас, поэтому повторный грант ничего не начислил (так и задумано:
+      один платёж — один зачёт). Посмотрите срок ниже: возможно, клиент уже в порядке. Если нужно
+      дать сверх этого — продлите ещё раз, не связывая грант с инвойсом.</p></div>
+</div>
+{% endif %}
+{% if undercut %}
+<div class="banner banner--danger" role="alert" style="margin-bottom:1.25rem">
+  <span class="banner__icon">×</span>
+  <div class="banner__body"><strong>Не продлено: грант короче оплаченного</strong>
+    <p>Вы связываете грант на {{ undercut.days }} дн. с инвойсом на {{ undercut.invoice_days }} дн.
+      Это не «частично помочь», а <strong>навсегда обрезать</strong> клиента до {{ undercut.days }} дн.:
+      когда монеты подтвердятся, автоматика увидит, что зачёт по инвойсу уже сделан, и ничего не добавит.
+      Дайте {{ undercut.invoice_days }} дн. — или не связывайте грант с этим инвойсом.</p></div>
+</div>
+{% endif %}
+{% if settle_unchosen %}
+<div class="banner banner--danger" role="alert" style="margin-bottom:1.25rem">
+  <span class="banner__icon">×</span>
+  <div class="banner__body"><strong>Не продлено: не указано, за какой счёт</strong>
+    <p>У этого аккаунта есть счета, которые автоматика ещё может зачесть сама. Если продлить, не
+      связав грант ни с одним из них, а потом монеты по такому счёту подтвердятся — клиент получит
+      те же дни второй раз за один платёж. Выберите счёт ниже; если грант действительно ни за какой
+      («подарочный»), отметьте это явно — тогда пришедшие монеты зачтутся отдельно, и так и
+      задумано.</p></div>
+</div>
+{% endif %}
+{% if settle_stale %}
+<div class="banner banner--danger" role="alert" style="margin-bottom:1.25rem">
+  <span class="banner__icon">×</span>
+  <div class="banner__body"><strong>Не продлено: инвойс уже изменился</strong>
+    <p>Пока страница была открыта, выбранный инвойс закрылся сам (автоматика его зачла).
+      Обновите поиск и посмотрите срок — возможно, продлевать уже не нужно.</p></div>
+</div>
+{% endif %}
+{% if extend_error %}
+<div class="banner banner--danger" role="alert" style="margin-bottom:1.25rem">
+  <span class="banner__icon">×</span>
+  <div class="banner__body"><strong>Не продлено</strong>
+    <p>Выберите тариф или укажите число дней от 1 до {{ max_grant_days }}.</p></div>
+</div>
+{% endif %}
+
+<div class="split">
+  <form class="card" method="post" action="{{ admin_path }}/accounts/search" autocomplete="off">
+    <fieldset class="form-group">
+      <legend>Поиск аккаунта</legend>
+      <div class="field">
+        <label class="label" for="acc-num">Номер аккаунта клиента</label>
+        <input class="input input--mono" id="acc-num" name="account_number"
+               placeholder="20 цифр" inputmode="numeric" autocapitalize="none"
+               spellcheck="false" autocomplete="off" required>
+        <p class="hint">Номер знает только клиент: в базе лежит его HMAC-хэш, поэтому ищем сверкой хэша. Номер уходит POST'ом — в адресной строке и логах он не появляется.</p>
+      </div>
+    </fieldset>
+    <button class="btn btn--primary" type="submit">Найти</button>
+  </form>
+
+  <form class="card" method="post" action="{{ admin_path }}/accounts/new">
+    <fieldset class="form-group">
+      <legend>Создать аккаунт</legend>
+      <div class="field">
+        <label class="label" for="new-plan">Тариф</label>
+        <select class="select" id="new-plan" name="plan_id">
+          <option value="">— выбрать —</option>
+          {% for p in plans %}
+          <option value="{{ p.id }}">{{ p.name }} · {{ p.duration_days }} дн. · {{ p.device_limit }} устр.</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label class="label" for="new-days">или дней вручную <span class="opt">— перебивает тариф</span></label>
+        <input class="input input--mono" id="new-days" name="custom_days" inputmode="numeric"
+               placeholder="напр. 30" autocomplete="off">
+      </div>
+    </fieldset>
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">Создать аккаунт</button>
+      <span class="note">выдаёт время бесплатно · номер покажется один раз</span>
+    </div>
+  </form>
+</div>
+
+{% if not_found %}
+<div class="banner banner--warn" role="status" style="margin-top:1.25rem">
+  <span class="banner__icon">!</span>
+  <div class="banner__body"><strong>Аккаунт не найден</strong>
+    <p>Проверьте номер — 20 цифр, ровно как у клиента.</p></div>
+</div>
+{% endif %}
+
+{% if found %}
+<div class="card" style="margin-top:1.5rem">
+  <div class="card__head"><span class="card__title">Аккаунт {{ found.masked }}</span>
+    <span class="badge badge--{{ 'ok' if found.status == 'active' else ('warn' if found.status == 'grace' else 'danger') }}">
+      {{ {'active':'активен','grace':'льготный','expired':'истёк'}[found.status] }}</span>
+  </div>
+  <dl class="kv" style="margin-top:.75rem">
+    <dt>Действует до</dt><dd class="mono">{{ found.expires_at }}</dd>
+    <dt>Устройства</dt><dd>{{ found.devices }} / {{ found.device_limit }}</dd>
+  </dl>
+
+  {% if found.rescuable %}
+  {# The operator must see that the account still has invoices the automation may yet settle, and
+     must be able to tell "paid late" (coins were seen) from "abandoned cart". Picking ONE invoice
+     below is not cosmetics: binding the grant to an invoice makes a second automatic credit
+     impossible without touching the invoice itself (it stays pollable, the evidence is intact). #}
+  <div class="banner banner--warn" role="status" style="margin-top:1rem">
+    <span class="banner__icon">!</span>
+    <div class="banner__body"><strong>Незакрытые инвойсы: {{ found.rescuable|length }}</strong>
+      <p>Их ещё может зачесть автоматика. Ниже укажите, за какой из них вы продлеваете — иначе тот же
+        платёж зачтётся дважды.</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <form method="post" action="{{ admin_path }}/accounts/{{ found.id }}/extend" style="margin-top:1rem">
+    <fieldset class="form-group">
+      <legend>Продлить</legend>
+      <div class="form-grid form-grid--3">
+        <div class="field span-2">
+          <label class="label" for="ext-plan">Тариф</label>
+          <select class="select" id="ext-plan" name="plan_id">
+            <option value="">— выбрать —</option>
+            {% for p in plans %}
+            <option value="{{ p.id }}">{{ p.name }} · {{ p.duration_days }} дн. · {{ p.device_limit }} устр.</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label class="label" for="ext-days">или дней вручную <span class="opt">— перебивает тариф</span></label>
+          <input class="input input--mono" id="ext-days" name="custom_days" inputmode="numeric"
+                 placeholder="напр. 30" autocomplete="off">
+        </div>
+      </div>
+    </fieldset>
+    {% if found.rescuable %}
+    <fieldset class="form-group">
+      <legend>За какой инвойс продлеваем</legend>
+      {# Nothing is preselected, and that is not cosmetics. The default used to be "goodwill grant",
+         so "forgot to answer" and "decided to gift" reached the server identically: the days were
+         credited and the automation later credited the same payment a second time. Now both options
+         require a click, `required` catches it in the browser, and the server refuses independently
+         of that (without JS, and from curl, the attribute means nothing). Preselecting "settle
+         everything" is no good either — it would also mark a genuine late payment for a different
+         amount, and that one would never be credited. #}
+      {% for inv in found.rescuable %}
+      <label class="check" style="display:block;margin:0 0 .4rem">
+        <input type="radio" name="settle_invoice_id" value="{{ inv.id }}" required>
+        <span class="mono">{{ inv.short }}</span> · {{ inv.created }} · <span class="mono">{{ inv.amount }}</span>
+        · <strong>{{ inv.days }} дн.</strong> —
+        {% if inv.seen %}<strong>монеты видели</strong> (похоже на реальный поздний платёж){% else %}прихода не видели (похоже на брошенную корзину){% endif %}
+      </label>
+      {% endfor %}
+      <label class="check" style="display:block;margin:.4rem 0 0">
+        <input type="radio" name="settle_invoice_id" value="{{ goodwill_grant }}" required>
+        Ни за какой — подарочный грант (если монеты придут, они зачтутся отдельно)
+      </label>
+    </fieldset>
+    {% endif %}
+    <p class="muted" style="font-size:var(--fs-sm);margin:0 0 .75rem">Дни складываются с текущим сроком (от max(сейчас, действует до)).</p>
+    <button class="btn btn--primary" type="submit">Продлить аккаунт</button>
+  </form>
+</div>
+{% endif %}
+
+{% set qs = ('status=' ~ filter_status ~ '&') if filter_status else '' %}
+<section style="margin-top:2.25rem">
+  <div class="card__head">
+    <h2 style="font-size:var(--fs-lg)">Все аккаунты <span class="subtle" style="font-weight:400">· {{ total }}</span></h2>
+  </div>
+  {# Filters and pages are ordinary links (GET), not JS: the console must work with JavaScript
+     disabled and over .onion. Only the status and the page number travel in the query string;
+     the account number never goes there — it moves by POST. #}
+  <nav class="toolbar" aria-label="Фильтр аккаунтов">
+    <a class="btn btn--sm {{ 'btn--primary' if not filter_status else 'btn--ghost' }}"
+       href="{{ admin_path }}/accounts"{% if not filter_status %} aria-current="page"{% endif %}>все</a>
+    {% for f in filters %}
+    <a class="btn btn--sm {{ 'btn--primary' if filter_status == f else 'btn--ghost' }}"
+       href="{{ admin_path }}/accounts?status={{ f }}"{% if filter_status == f %} aria-current="page"{% endif %}>{{ {'active':'активные','grace':'в grace','expired':'истёкшие'}[f] }}</a>
+    {% endfor %}
+  </nav>
+
+  <p class="muted" style="font-size:var(--fs-sm);margin:0 0 1rem">Номер аккаунта показать невозможно: в базе только его HMAC-хэш, плейнтекста нет нигде — сервер его не знает. В списке аккаунты различаются по маске внутреннего id; чтобы открыть конкретный, нужен номер от клиента (поиск выше).</p>
+
+  <div class="table-wrap">
+    <table class="tbl tbl--dense">
+      <caption class="skip">Аккаунты — список только для чтения</caption>
+      <thead>
+        <tr>
+          <th scope="col">аккаунт</th>
+          <th scope="col">статус</th>
+          <th scope="col">действует до</th>
+          <th scope="col" class="num">устройств</th>
+          <th scope="col">создан</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in accounts %}
+        <tr>
+          <td class="cellcode">{{ a.masked }}</td>
+          <td>
+            <span class="badge badge--{{ 'ok' if a.status == 'active' else ('warn' if a.status == 'grace' else 'danger') }}">
+              {{ {'active':'активен','grace':'льготный','expired':'истёк'}[a.status] }}</span>
+          </td>
+          <td class="freshness">{{ a.expires_at }}</td>
+          <td class="num">{{ a.devices }} / {{ a.device_limit }}</td>
+          <td class="freshness">{{ a.created_at }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="empty">Под фильтр не попал ни один аккаунт.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pages > 1 %}
+  <nav class="toolbar" style="margin-top:1rem" aria-label="Страницы">
+    {% if page > 1 %}
+    <a class="btn btn--ghost btn--sm" href="{{ admin_path }}/accounts?{{ qs }}page={{ page - 1 }}" rel="prev">← назад</a>
+    {% endif %}
+    <span class="muted" style="font-size:var(--fs-sm)">страница {{ page }} из {{ pages }}</span>
+    {% if page < pages %}
+    <a class="btn btn--ghost btn--sm" href="{{ admin_path }}/accounts?{{ qs }}page={{ page + 1 }}" rel="next">вперёд →</a>
+    {% endif %}
+  </nav>
+  {% endif %}
+</section>
+{% endblock %}

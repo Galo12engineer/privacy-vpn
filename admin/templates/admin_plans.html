@@ -1,0 +1,122 @@
+{% extends "admin_base.html" %}
+{% block title %}Тарифы{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p class="admin-kicker">биллинг</p>
+  <h1>Тарифы</h1>
+  <p class="muted">Цена, лимит устройств, активность и флаг «рекомендованный» правятся прямо в строке — без правки кода. Значения сохраняются кнопкой в конце строки.</p>
+</div>
+
+<div class="table-wrap">
+  <table class="tbl">
+    <caption class="skip">Тарифные планы с инлайн-редактированием</caption>
+    <thead>
+      <tr>
+        <th scope="col">код</th>
+        <th scope="col">название</th>
+        <th scope="col" class="num">дни</th>
+        <th scope="col" class="num">цена</th>
+        <th scope="col">статус</th>
+        <th scope="col">изменить</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in plans %}
+      <tr>
+        <td class="cellcode">
+          {{ p.code }}
+          {% if p.featured %} <span class="badge badge--warn badge--none"><span class="tag-star">★</span> featured</span>{% endif %}
+        </td>
+        <td>
+          <div class="stack2">
+            <span>{{ p.name }}</span>
+            <span class="meta">лимит {{ p.device_limit }} устр.</span>
+          </div>
+        </td>
+        <td class="num">{{ p.duration_days }}</td>
+        <td class="num">{{ '%.2f'|format(p.price_fiat_cents / 100) }}&nbsp;{{ p.fiat_currency }}</td>
+        <td>{% if p.is_active %}<span class="badge badge--ok">активен</span>{% else %}<span class="badge">выключен</span>{% endif %}</td>
+        <td>
+          <form method="post" action="{{ admin_path }}/plans/{{ p.id }}" class="inline-edit">
+            <label class="fld"><span>цена, ¢</span>
+              <input class="input w-price" name="price_fiat_cents" type="number" min="0" step="1"
+                     value="{{ p.price_fiat_cents }}" aria-label="цена в центах для {{ p.code }}">
+            </label>
+            <label class="fld"><span>устр.</span>
+              <input class="input w-num" name="device_limit" type="number" min="1" step="1"
+                     value="{{ p.device_limit }}" aria-label="лимит устройств для {{ p.code }}">
+            </label>
+            <label class="fld"><span>актив.</span>
+              <select class="select w-sel" name="is_active" aria-label="активность {{ p.code }}">
+                <option value="1"{% if p.is_active %} selected{% endif %}>да</option>
+                <option value="0"{% if not p.is_active %} selected{% endif %}>нет</option>
+              </select>
+            </label>
+            <label class="fld" title="включение снимет флаг у остальных тарифов"><span>рек. ★</span>
+              <select class="select w-sel" name="featured" aria-label="рекомендованный {{ p.code }}">
+                <option value="1"{% if p.featured %} selected{% endif %}>да</option>
+                <option value="0"{% if not p.featured %} selected{% endif %}>нет</option>
+              </select>
+            </label>
+            <button class="btn btn--primary btn--sm" type="submit">Сохранить</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="empty">Тарифов пока нет — создайте первый ниже.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<section style="margin-top:2rem">
+  <div class="page-head" style="margin-bottom:1rem"><h2>Новый тариф</h2></div>
+  <form class="card" method="post" action="{{ admin_path }}/plans">
+    <fieldset class="form-group">
+      <legend>Определение</legend>
+      <div class="form-grid">
+        <div class="field">
+          <label class="label" for="np-code">Код <span class="opt">— напр. 1m</span></label>
+          <input class="input input--mono" id="np-code" name="code" placeholder="1m"
+                 autocapitalize="none" spellcheck="false" required>
+        </div>
+        <div class="field">
+          <label class="label" for="np-name">Название</label>
+          <input class="input" id="np-name" name="name" placeholder="1 месяц" required>
+        </div>
+        <div class="field">
+          <label class="label" for="np-days">Длительность, дней</label>
+          <input class="input input--mono" id="np-days" name="duration_days" type="number" min="1" placeholder="30" required>
+        </div>
+        <div class="field">
+          <label class="label" for="np-sort">Порядок сортировки</label>
+          <input class="input input--mono" id="np-sort" name="sort_order" type="number" value="0">
+        </div>
+      </div>
+    </fieldset>
+    <fieldset class="form-group">
+      <legend>Цена и лимиты</legend>
+      <div class="form-grid form-grid--3">
+        <div class="field">
+          <label class="label" for="np-price">Цена, центов</label>
+          <input class="input input--mono" id="np-price" name="price_fiat_cents" type="number" min="0" placeholder="500" required>
+          <p class="hint">Целое в минимальных единицах: 500 = 5.00</p>
+        </div>
+        <div class="field">
+          <label class="label" for="np-cur">Валюта</label>
+          <input class="input input--mono" id="np-cur" name="fiat_currency" value="USD" maxlength="3"
+                 autocapitalize="characters" spellcheck="false">
+        </div>
+        <div class="field">
+          <label class="label" for="np-dev">Лимит устройств</label>
+          <input class="input input--mono" id="np-dev" name="device_limit" type="number" min="1" value="5">
+        </div>
+      </div>
+    </fieldset>
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">Создать тариф</button>
+      <span class="note">создаётся активным; флаг «рекомендованный» ставится инлайн в таблице выше</span>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "admin_base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Инвойсы{% endblock %}
+{% block content %}
+{# "Paid" comes from Python (admin_service.invoice_is_paid → status PAID/OVERPAID).
+   This used to be `selectattr('paid_at')`, and it lied: the scrub nulls paid_at deliberately, so a
+   paid and activated invoice showed up as unpaid — in production the counter said "Paid 0 / 4" with
+   two paid rows in the table. Payment cannot be judged by the time of payment. #}
+<div class="page-head">
+  <p class="admin-kicker">биллинг</p>
+  <h1>Инвойсы</h1>
+  <p class="muted">Агрегаты платежей, только чтение. Связь инвойс ↔ аккаунт скрабится после активации — платёжных PII здесь нет.</p>
+</div>
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="k">Всего</div>
+    <div class="v">{{ stats.total }}</div>
+  </div>
+  <div class="stat">
+    <div class="k">Оплачено</div>
+    <div class="v">{{ stats.paid }}<small> / {{ stats.total }}</small></div>
+    <div class="d">по статусу счёта</div>
+  </div>
+  <div class="stat">
+    <div class="k">Связь стёрта</div>
+    <div class="v">{{ stats.scrubbed }}</div>
+    <div class="d">no-logs</div>
+  </div>
+</div>
+
+<div class="banner banner--info" role="note" style="margin-top:1.5rem">
+  <span class="banner__icon">i</span>
+  <div class="banner__body">
+    {# <b>, not <strong>: .banner__body strong in style.css is display:block, so any inline emphasis
+       inside the paragraph would tear the sentence into separate lines. #}
+    <strong>Как читать эту таблицу</strong>
+    <p><b>Оплачен</b> — считается по <em>статусу</em> счёта (<span class="mono">paid</span> / <span class="mono">overpaid</span>), а не по времени оплаты. У активированного счёта точное время оплаты стёрто, поэтому «время стёрто скрабом» означает <em>оплачен, но когда — уже не знаем</em>. Это не «не заплатили».</p>
+    <p><b>Связь стёрта (скраб)</b> — после активации подписки уничтожаются связь инвойс ↔ аккаунт, платёжный адрес, крипто-сумма, курс, txid и поле <span class="mono">paid_at</span>: точное время оплаты коррелирует с началом подписки и восстановило бы связку платёж ↔ покупатель по публичному блокчейну. Это штатная работа no-logs и признак, что счёт отработал, а не проблема.</p>
+    {# Without this paragraph the page would claim there is "no way to find out" — untrue, and exactly
+       the sort of overclaim that costs more than an honest gap (CLAUDE.md, rule 6). The wording is
+       checked against docs/no-logs-inventory.md §1a, which also lists what the scrub leaves behind. #}
+    <p><b>Чего скраб НЕ делает.</b> Все часы самой строки счёта огрублены до суток (поэтому в
+      «создан» у скрабнутых — только дата), но сопоставить платёж с аккаунтом <em>внутри базы</em>
+      всё ещё можно: срок аккаунта минус купленные дни даёт точный момент, и это время нельзя
+      сдвинуть, не изменив оплаченное. Огрубление снижает точность сопоставления с поштучной до
+      посуточной — <strong>при нынешних объёмах в сутках нередко один счёт</strong>, так что защита
+      растёт вместе с числом покупок, а не работает сразу. Фиатная сумма и число дней тоже
+      остаются — анонимная строка бухгалтерии. Подробности —
+      <span class="mono">docs/no-logs-inventory.md §1a</span>.</p>
+  </div>
+</div>
+
+<div class="table-wrap" style="margin-top:1.75rem">
+  <table class="tbl tbl--dense">
+    <caption class="skip">Инвойсы — только чтение</caption>
+    <thead>
+      <tr>
+        <th scope="col">создан</th>
+        <th scope="col">метод</th>
+        <th scope="col">статус</th>
+        <th scope="col" class="num">дни</th>
+        <th scope="col" class="num">фиат</th>
+        <th scope="col">крипта</th>
+        <th scope="col">оплачен</th>
+        <th scope="col">связь стёрта</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      {% set i = r.inv %}
+      <tr>
+        {# on a scrubbed invoice created_at is coarsened to the day — printing "00:00" would show the
+           operator a time we deliberately do not know #}
+        <td class="freshness">{% if not i.created_at %}—{% elif i.scrubbed_at %}{{ i.created_at.strftime('%Y-%m-%d') }}{% else %}{{ i.created_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}</td>
+        <td>{{ m.method_label(i.method) }}</td>
+        <td>{{ m.invoice_status(i.status) }}</td>
+        <td class="num">{{ i.days_granted }}</td>
+        <td class="num">{{ '%.2f'|format(i.amount_fiat_cents / 100) }}&nbsp;{{ i.fiat_currency }}</td>
+        <td class="cellcode">{% if i.crypto_amount %}{% set ca = i.crypto_amount | string %}{{ (ca.rstrip('0').rstrip('.')) if '.' in ca else ca }}&nbsp;<span class="subtle">{{ i.crypto_currency or '' }}</span>{% else %}<span class="subtle">—</span>{% endif %}</td>
+        <td>
+          <div class="stack2" style="justify-items:start">
+            {% if r.paid %}<span class="badge badge--ok badge--none">да</span>{% else %}<span class="subtle">—</span>{% endif %}
+            {% if r.paid %}
+            <span class="meta">{% if i.paid_at %}{{ i.paid_at.strftime('%Y-%m-%d %H:%M') }}{% else %}время стёрто скрабом{% endif %}</span>
+            {% endif %}
+          </div>
+        </td>
+        <td>
+          <div class="stack2" style="justify-items:start">
+            {% if i.scrubbed_at %}<span class="badge badge--info badge--none">да</span>{% else %}<span class="subtle">—</span>{% endif %}
+            {% if i.scrubbed_at %}<span class="meta">{{ i.scrubbed_at.strftime('%Y-%m-%d') }}</span>{% endif %}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="empty">Инвойсов пока нет.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="muted" style="margin-top:1rem;font-size:var(--fs-sm)">В таблице — последние {{ row_cap }} счетов; счётчики сверху считаются по всей базе.</p>
+{% endblock %}

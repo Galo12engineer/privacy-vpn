@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}FAQ — privacyvpn VPN{% endblock %}
+
+{% block head %}
+<style>
+  .faq-toc { display:flex; flex-wrap:wrap; gap:.4rem .9rem; margin:0 0 2rem; padding:0; list-style:none; }
+  .faq-toc a { font-size:var(--fs-sm, .9rem); }
+  .faq-cat { margin-bottom:2.25rem; scroll-margin-top:5rem; }
+  .faq-cat > h2 { font-size:var(--fs-lg); margin:0 0 .9rem; }
+  .faq details { border:1px solid var(--line, #ddd); border-radius:var(--radius, 8px); padding:.7rem 1rem; margin-bottom:.55rem; }
+  .faq details[open] { border-color:var(--line-strong, var(--line, #bbb)); }
+  .faq summary { cursor:pointer; font-weight:600; list-style:none; display:flex; gap:.6rem; align-items:baseline; }
+  .faq summary::-webkit-details-marker { display:none; }
+  .faq summary::before { content:'+'; color:var(--muted, #888); font-weight:700; }
+  .faq details[open] summary::before { content:'\2013'; }
+  .faq details > :not(summary) { margin:.6rem 0 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>{{ _('Частые вопросы') }}</h1>
+  <p class="muted">{{ _('Оплата, устройства, приватность и решение проблем. Не нашли ответ —') }} <a href="{{ url_for('support') }}">{{ _('поддержка') }}</a>.</p>
+</div>
+
+<ul class="faq-toc muted">
+  <li><a href="#start">{{ _('Начало работы и настройка') }}</a></li>
+  <li><a href="#trouble">{{ _('Подключение и неполадки') }}</a></li>
+  <li><a href="#account">{{ _('Аккаунт и устройства') }}</a></li>
+  <li><a href="#payment">{{ _('Оплата и время') }}</a></li>
+  <li><a href="#privacy">{{ _('Приватность, логи, доверие') }}</a></li>
+  <li><a href="#features">{{ _('Использование и функции') }}</a></li>
+</ul>
+
+<section id="start" class="faq-cat">
+  <h2>{{ _('Начало работы и настройка') }}</h2>
+  <div class="faq">
+    <details><summary>{{ _('Что такое privacyvpn и как это работает?') }}</summary>
+      <p class="muted">{{ _('VPN без KYC: ключ генерируется в вашем браузере, вы платите криптовалютой, импортируете конфиг в приложение и подключаетесь. Аккаунтов и email нет — только номер.') }}</p></details>
+    <details><summary>{{ _('С чего начать — купить план и подключиться первый раз?') }}</summary>
+      <p class="muted">{{ _('Оформите план, добавьте устройство в кабинете и импортируйте конфиг в WireGuard.') }} <a href="{{ url_for('purchase') }}">{{ _('Купить') }}</a> · <a href="{{ url_for('guides') }}">{{ _('Гайды') }}</a></p></details>
+    <details><summary>{{ _('Нужно ли ставить ваше приложение?') }}</summary>
+      <p class="muted">{{ _('Нет. Своего приложения у нас нет — используется официальный клиент WireGuard.') }}</p></details>
+    <details><summary>{{ _('Как настроить на Windows или macOS?') }}</summary>
+      <p class="muted">{{ _('Установите клиент WireGuard и импортируйте .conf. Пошагово — в гайде под вашу ОС.') }} <a href="{{ url_for('guides') }}">{{ _('Открыть Гайды') }}</a></p></details>
+    <details><summary>{{ _('Как настроить на Android или iOS по QR-коду?') }}</summary>
+      <p class="muted">{{ _('Установите WireGuard из магазина приложений и отсканируйте QR-код из кабинета. Детали — в гайде.') }} <a href="{{ url_for('guides') }}">{{ _('Открыть Гайды') }}</a></p></details>
+    <details><summary>{{ _('Как настроить на Linux через wg-quick?') }}</summary>
+      <p class="muted">{{ _('Сохраните .conf и поднимите туннель командой wg-quick. Полностью — в гайде для Linux.') }} <a href="{{ url_for('guides') }}">{{ _('Открыть Гайды') }}</a></p></details>
+    <details><summary>{{ _('Как добавить ещё устройство или получить новый конфиг?') }}</summary>
+      <p class="muted">{{ _('В кабинете: «Добавить устройство» → отсканируйте QR или скачайте .conf. Ключ генерируется в браузере.') }} <a href="{{ url_for('add_device') }}">{{ _('Устройства') }}</a></p></details>
+    <details><summary>{{ _('Как импортировать .conf или отсканировать QR в WireGuard?') }}</summary>
+      <p class="muted">{{ _('В клиенте WireGuard выберите «импорт из файла» или «сканировать QR-код». Скриншоты — в гайде под вашу ОС.') }} <a href="{{ url_for('guides') }}">{{ _('Открыть Гайды') }}</a></p></details>
+    <details><summary>{{ _('Как включить kill-switch?') }}</summary>
+      <p class="muted">{{ _('В клиенте WireGuard включите блокировку трафика вне туннеля; точные шаги для каждой ОС — в гайде.') }} <a href="{{ url_for('guides') }}">{{ _('Открыть Гайды') }}</a></p></details>
+  </div>
+</section>
+
+<section id="trouble" class="faq-cat">
+  <h2>{{ _('Подключение и неполадки') }}</h2>
+  <div class="faq">
+    <details><summary>{{ _('Как понять, что я действительно подключён?') }}</summary>
+      <p class="muted">{{ _('В приложении WireGuard посмотрите время последнего handshake и убедитесь, что ваш публичный IP сменился.') }}</p></details>
+    <details><summary>{{ _('Подключился, но нет интернета — что делать?') }}</summary>
+      <p class="muted">{{ _('Убедитесь, что конфиг импортирован целиком, включая строку DNS, исходящий UDP не блокируется, и попробуйте другой сервер.') }}</p></details>
+    <details><summary>{{ _('WireGuard не показывает handshake / вообще не подключается — что делать?') }}</summary>
+      <p class="muted">{{ _('Ваша сеть может резать UDP 51820 — используйте endpoint на порту :443. Также проверьте часы устройства и переимпортируйте конфиг.') }}</p></details>
+    <details><summary>{{ _('Соединение медленное — что можно сделать?') }}</summary>
+      <p class="muted">{{ _('Выберите сервер ближе к себе, попробуйте другую ноду и проверьте настройку MTU.') }}</p></details>
+    <details><summary>{{ _('Туннель постоянно рвётся — как стабилизировать?') }}</summary>
+      <p class="muted">{{ _('Включите persistent keepalive, понизьте MTU или смените endpoint.') }}</p></details>
+    <details><summary>{{ _('Вчера работало, сегодня нет — закончилось оплаченное время?') }}</summary>
+      <p class="muted">{{ _('Проверьте кабинет: когда оплаченное время истекает, устройство отключается до продления.') }}</p></details>
+    <details><summary>{{ _('После отключения VPN пропал интернет — как починить?') }}</summary>
+      <p class="muted">{{ _('Настройка always-on или kill-switch всё ещё блокирует трафик — выключите её в приложении WireGuard или в VPN-настройках ОС.') }}</p></details>
+    <details><summary>{{ _('Моя сеть (работа, учёба, РФ/Иран/Китай) блокирует WireGuard — что делать?') }}</summary>
+      <p class="muted">{{ _('Попробуйте endpoint на :443. Учтите: обычный WireGuard может детектироваться DPI — обфускация на дорожной карте (говорим честно).') }}</p></details>
+    <details><summary>{{ _('Виден ли локальный принтер или устройства при подключении?') }}</summary>
+      <p class="muted">{{ _('При full-tunnel kill-switch локальный трафик блокируется; доступ к локальной сети определяется параметром AllowedIPs.') }}</p></details>
+    <details><summary>{{ _('Как проверить, что нет утечек DNS или IPv6?') }}</summary>
+      <p class="muted">{{ _('Конфиг содержит наш no-log DNS; держите AllowedIPs равными 0.0.0.0/0, ::/0 и проверьте IP/DNS на любом leak-тесте.') }}</p></details>
+  </div>
+</section>
+
+<section id="account" class="faq-cat">
+  <h2>{{ _('Аккаунт и устройства') }}</h2>
+  <div class="faq">
+    <details><summary>{{ _('Нужны ли email, имя или телефон для регистрации?') }}</summary>
+      <p class="muted">{{ _('Нет. Аккаунт — это случайный 20-значный номер — по модели «номер вместо логина», как у Mullvad.') }}</p></details>
+    <details><summary>{{ _('Как войти в кабинет?') }}</summary>
+      <p class="muted">{{ _('Введите номер аккаунта на странице входа — ни пароля, ни email не требуется.') }} <a href="{{ url_for('login') }}">{{ _('Войти') }}</a></p></details>
+    <details><summary>{{ _('Я потерял номер аккаунта — как восстановить?') }}</summary>
+      <p class="muted">{{ _('Никак, by design: сброса и восстановления нет. Аккаунт — это только номер; email, если вы его дали, хранится отдельно и зашифрованно и для восстановления номера не используется. Храните номер в менеджере паролей.') }}</p></details>
+    <details><summary>{{ _('Email обязателен и для чего он?') }}</summary>
+      <p class="muted">{{ _('Необязателен и нужен только для напоминаний об окончании подписки; если укажете — хранится в зашифрованном виде.') }}</p></details>
+    <details><summary>{{ _('Сколько устройств можно подключить?') }}</summary>
+      <p class="muted">{{ _('По умолчанию 5 (зависит от плана). Ключ каждого устройства генерируется отдельно в браузере.') }}</p></details>
+    <details><summary>{{ _('Где хранится мой приватный ключ — это безопасно?') }}</summary>
+      <p class="muted">{{ _('Он генерируется в вашем браузере и на наши серверы никогда не передаётся.') }}</p></details>
+    <details><summary>{{ _('Можно использовать один аккаунт на нескольких устройствах одновременно?') }}</summary>
+      <p class="muted">{{ _('Да, в пределах лимита устройств вашего плана.') }}</p></details>
+    <details><summary>{{ _('Как удалить устройство, которым больше не пользуюсь?') }}</summary>
+      <p class="muted">{{ _('В кабинете удалите устройство — это освободит слот.') }} <a href="{{ url_for('add_device') }}">{{ _('Устройства') }}</a></p></details>
+  </div>
+</section>
+
+<section id="payment" class="faq-cat">
+  <h2>{{ _('Оплата и время') }}</h2>
+  <div class="faq">
+    <details><summary>{{ _('Какие способы оплаты?') }}</summary>
+      <p class="muted">{{ _('Bitcoin (on-chain), Litecoin и USDT-TRC20. Платежи non-custodial — средства идут прямо на кошельки оператора.') }}</p></details>
+    <details><summary>{{ _('Оплатил, но время не начислилось — что делать?') }}</summary>
+      <p class="muted">{{ _('Мы ждём подтверждений сети (обычно 10–40 минут), активация автоматическая. Если через час ничего нет — напишите в поддержку с номером счёта.') }}</p></details>
+    <details><summary>{{ _('Как проверить, прошёл ли платёж?') }}</summary>
+      <p class="muted">{{ _('Статус видно на странице счёта и в кабинете.') }}</p></details>
+    <details><summary>{{ _('Что будет, когда оплаченное время закончится?') }}</summary>
+      <p class="muted">{{ _('Устройство отключается и VPN перестаёт работать; продлите подписку, чтобы восстановить доступ.') }}</p></details>
+    <details><summary>{{ _('Что если я недоплатил?') }}</summary>
+      <p class="muted">{{ _('Недобор до ~1% засчитывается автоматически. Больше — счёт остаётся неоплаченным: пришлите полную сумму одной транзакцией по новому счёту (доплата второй транзакцией не сложится).') }}</p></details>
+    <details><summary>{{ _('Что если я переплатил — это станет балансом?') }}</summary>
+      <p class="muted">{{ _('Нет, баланс на будущее не копится. При значимой переплате напишите в поддержку — вернём излишек.') }}</p></details>
+    <details><summary>{{ _('Возможен ли возврат средств?') }}</summary>
+      <p class="muted">{{ _('Криптоплатёж необратим. Возврат — только при недоставке услуги и только через поддержку.') }} <a href="{{ url_for('terms') }}">{{ _('Условия') }}</a></p></details>
+    <details><summary>{{ _('Есть ли бесплатный пробный период?') }}</summary>
+      <p class="muted">{{ _('Нет, бесплатного триала сейчас нет.') }}</p></details>
+    <details><summary>{{ _('Мне дали подарочный код — что с ним делать?') }}</summary>
+      <p class="muted">{{ _('Откройте страницу погашения, вставьте код целиком (вместе с TT-) и нажмите «Погасить». Доступ выдаётся сразу, платить ничего не нужно. Срок начинает идти с момента погашения, а не с момента покупки кода.') }} <a href="{{ url_for('redeem') }}">{{ _('Погасить код') }}</a></p></details>
+    <details><summary>{{ _('У меня уже есть аккаунт — код создаст второй?') }}</summary>
+      {# The one mistake that costs the customer real work: a second account means new keys and a
+         re-import on every device. The answer has to be the first thing they read. #}
+      <p class="muted">{{ _('Только если гасить его, не войдя в кабинет. Сначала войдите по номеру аккаунта — тогда дни лягут на текущий аккаунт, номер и устройства останутся прежними. Если войти забыли, получится второй аккаунт со своим номером, и устройства придётся настраивать заново.') }}</p></details>
+    <details><summary>{{ _('Код не подошёл или потерялся — что делать?') }}</summary>
+      <p class="muted">{{ _('Проверьте, что скопировали строку целиком: регистр и дефисы не важны, но код должен быть полным. Погасить его можно один раз — второй раз он не сработает. Мы не можем восстановить или заменить код: у нас хранится только его хэш, а сам код есть лишь у того, кто его купил. Потерянный код — как потерянные наличные, поэтому храните его до погашения так же.') }}</p></details>
+    <details><summary>{{ _('USDT-TRC20 так же приватен, как оплата Bitcoin?') }}</summary>
+      <p class="muted">{{ _('Нет. Это прозрачная сеть, и эмитент может заморозить средства — наименее приватный из вариантов.') }}</p></details>
+    <details><summary>{{ _('Требуется ли какой-либо KYC или проверка личности?') }}</summary>
+      <p class="muted">{{ _('Никогда — ни имени, ни email, ни документов.') }}</p></details>
+  </div>
+</section>
+
+<section id="privacy" class="faq-cat">
+  <h2>{{ _('Приватность, логи, доверие') }}</h2>
+  <div class="faq">
+    <details><summary>{{ _('Ведёте ли вы логи?') }}</summary>
+      <p class="muted">{{ _('Нет — мы не логируем IP клиентов, трафик и DNS.') }} <a href="{{ links.nolog }}">{{ _('Прозрачность') }}</a></p></details>
+    <details><summary>{{ _('Какие данные вы реально обо мне храните?') }}</summary>
+      <p class="muted">{{ _('Минимально необходимый набор — честно перечислен на странице «Прозрачность».') }} <a href="{{ links.nolog }}">{{ _('Прозрачность') }}</a></p></details>
+    <details><summary>{{ _('Что если суд или полиция потребуют мои данные?') }}</summary>
+      <p class="muted">{{ _('Связать exit-IP и время с конкретным пользователем нам физически нечем — мы это не логируем.') }} <a href="{{ url_for('terms') }}">{{ _('Условия') }}</a></p></details>
+    <details><summary>{{ _('Где вы базируетесь / под какой юрисдикцией?') }}</summary>
+      <p class="muted">{{ _('Оффшор без обязательного хранения данных. Конкретную юрисдикцию мы намеренно не называем — это часть модели угроз, а не скрытность от пользователя.') }}</p></details>
+    <details><summary>{{ _('Что ваши ноды хранят на диске?') }}</summary>
+      <p class="muted">{{ _('На диске — только идентичность самой ноды (её WG-ключ, номер, сетевые параметры). Данных пользователей нет: ключи и устройства приходят из панели после каждой перезагрузки. Полного шифрования диска пока нет — оно на дорожной карте.') }} <a href="{{ links.ram }}">{{ _('Прозрачность') }}</a></p></details>
+    <details><summary>{{ _('Публикуете ли вы warrant canary?') }}</summary>
+      <p class="muted">{{ _('Нет. Мы намеренно не ведём канарейку и не выдаём несуществующую подпись за настоящую — почему, честно объясняем на «Прозрачности».') }} <a href="{{ links.canary }}">{{ _('Прозрачность') }}</a></p></details>
+    <details><summary>{{ _('Есть ли у вас адрес .onion (Tor)?') }}</summary>
+      <p class="muted">{{ _('Да, весь сайт работает через Tor без JavaScript и внешних ресурсов.') }}</p></details>
+    <details><summary>{{ _('Вы реселлер или у вас свои серверы?') }}</summary>
+      <p class="muted">{{ _('Мы держим собственные серверы.') }}</p></details>
+    <details><summary>{{ _('Легально ли пользоваться VPN?') }}</summary>
+      <p class="muted">{{ _('В большинстве стран — да; это зависит от законов вашей юрисдикции.') }}</p></details>
+  </div>
+</section>
+
+<section id="features" class="faq-cat">
+  <h2>{{ _('Использование и функции') }}</h2>
+  <div class="faq">
+    <details><summary>{{ _('Разрешены ли P2P / торренты?') }}</summary>
+      <p class="muted">{{ _('Да, но при злоупотреблениях P2P может быть ограничен или отключён на отдельной ноде — см. правила использования.') }} <a href="{{ url_for('aup') }}">AUP</a></p></details>
+    <details><summary>{{ _('Поддерживаете ли вы проброс портов (port forwarding)?') }}</summary>
+      <p class="muted">{{ _('Сейчас проброс портов не поддерживается.') }}</p></details>
+    {# The country list comes from the DB (see cabinet._sellable_locations), not by hand: otherwise it
+       starts lying with the very first new node. #}
+    <details><summary>{{ _('В каких странах стоят ваши серверы?') }}</summary>
+      <p class="muted">{% if locations %}{{ _('Сейчас доступны локации:') }} <b>{{ locations|join(', ') }}</b>. {{ _('Все локации входят в одну подписку — доплаты за смену страны нет.') }}{% else %}{{ _('Список локаций появится здесь, как только ноды будут открыты для продажи.') }}{% endif %}</p></details>
+    <details><summary>{{ _('Какой сервер или локацию выбрать?') }}</summary>
+      <p class="muted">{{ _('Ближайший к вам — так будет лучше скорость и задержка.') }}{% if locations %} {{ _('Доступны:') }} {{ locations|join(', ') }}.{% endif %}</p></details>
+    <details><summary>{{ _('Можно ли использовать для стриминга вроде Netflix?') }}</summary>
+      <p class="muted">{{ _('Не гарантируем — стриминговые сервисы могут блокировать VPN-адреса.') }}</p></details>
+    <details><summary>{{ _('Можно ли отправлять почту по SMTP (порт 25)?') }}</summary>
+      <p class="muted">{{ _('Нет: исходящий порт 25 закрыт на нодах для защиты от спам-абуза (иначе IP попадёт в блок-листы).') }}</p></details>
+    <details><summary>{{ _('Есть ли лимит трафика или скорости?') }}</summary>
+      <p class="muted">{{ _('Отдельного лимита по объёму трафика нет — вы платите за время, а не за гигабайты. Искусственного ограничения скорости мы тоже не ставим: реальная скорость зависит от канала конкретной ноды и текущей нагрузки.') }}</p></details>
+    <details><summary>{{ _('Какой порт / endpoint использовать, если 51820 заблокирован?') }}</summary>
+      <p class="muted">{{ _('Переключите endpoint на порт :443.') }}</p></details>
+    <details><summary>{{ _('Как избежать утечек DNS или WebRTC?') }}</summary>
+      <p class="muted">{{ _('Конфиг содержит наш no-log DNS и full-tunnel AllowedIPs; в браузере можно дополнительно отключить WebRTC.') }}</p></details>
+  </div>
+</section>
+
+<p class="muted" style="margin-top:1.5rem;font-size:var(--fs-sm)">{{ _('Не нашли ответ?') }} <a href="{{ url_for('support') }}">{{ _('Поддержка') }}</a> · <a href="{{ url_for('guides') }}">{{ _('Гайды') }}</a></p>
+{% endblock %}

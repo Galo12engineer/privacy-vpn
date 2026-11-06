@@ -1,0 +1,10 @@
+[Unit]
+Description=privacyvpn monitor failed -> shout about it (a dead-man's switch must not die quietly)
+# Pulled in by OnFailure= in privacyvpn-monitor.service. Not timer-driven.
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/privacyvpn-monitor.env
+ExecStart=/opt/privacyvpn/infra/monitoring/monitor-failed.sh
+# Must be far shorter than the parent's: this is the last thing that can still speak.
+TimeoutStartSec=30

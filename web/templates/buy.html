@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% set page = 'renew' %}
+{% block title %}{{ _('Купить доступ') }} — privacyvpn VPN{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>{{ _('Купить доступ') }}</h1>
+  <p class="muted">{{ _('Без аккаунта и персональных данных. После оплаты вы получите номер аккаунта — он и есть ваш доступ.') }}</p>
+  {% if locations %}
+  {# Locations come from the DB (cabinet._sellable_locations) — the buyer must see the countries
+     BEFORE paying, not after logging in. #}
+  <p class="muted">{{ _('Локации в составе любого плана:') }} <b>{{ locations|join(', ') }}</b>.</p>
+  {% endif %}
+  {# A gift replaces the purchase, not the price — its own page, not a field in this form. #}
+  <p class="muted" style="font-size:var(--fs-sm)">{{ _('Есть подарочный код?') }} <a href="{{ url_for('redeem') }}">{{ _('Погасить код') }}</a>.</p>
+</div>
+
+{% if not purchases_open|default(true) %}
+<div class="banner banner--info" role="status">
+  <span class="banner__icon">○</span>
+  <div class="banner__body"><strong>{{ _('Покупка временно недоступна') }}</strong><p>{{ _('Подключаем приём оплаты — загляните чуть позже.') }}</p></div>
+</div>
+{% else %}
+{% if error %}
+<div class="banner banner--danger" style="margin-bottom:1rem"><span class="banner__icon">×</span><div class="banner__body"><p>{{ _(error) }}{% if pending_invoice_id %} <a href="{{ url_for('invoice', id=pending_invoice_id) }}">{{ _('Открыть текущий счёт') }}</a>{% endif %}</p></div></div>
+{% endif %}
+
+<form method="post" action="{{ url_for('invoice_create') }}">
+<div class="split">
+  <section class="stack" style="--space:1.5rem">
+    <fieldset class="card" style="border:1px solid var(--line)">
+      <legend class="card__title" style="padding:0 .4rem">{{ _('Тариф') }}</legend>
+      <div class="choice-grid" style="margin-top:.5rem">
+        {% for p in plans %}
+        {# selection is preserved after a failed POST: otherwise the error banner refers to one
+           coin/plan while the form shows another (the radios used to always reset to loop.first) #}
+        <label class="choice">
+          <input type="radio" name="plan_code" value="{{ p.code }}" {{ 'checked' if (sel_plan and sel_plan == p.code) or (not sel_plan and loop.first) }}>
+          <span class="choice__mark"></span>
+          <span class="choice__body">
+            <span class="choice__title">{{ p.name }}</span>
+            <span class="choice__sub">
+              {# p.price_was is the plan's REAL list price, the same number /buy shows without a
+                 code — not an inflated anchor. It only appears when a code is actually applied. #}
+              {% if p.price_was %}<s class="muted">{{ p.price_was }}</s> {% endif %}<strong class="plan-price">{{ p.price }}</strong>{% if p.months > 1 %} · <strong>{{ p.per_month }}/{{ _('мес') }}</strong>{% endif %}<br>
+              {{ p.device_limit }} {{ _('устройств') }} · {{ days_phrase(p.duration_days) }}
+              {% if p.coins_limited %}<br><span class="plan-coins">{{ _('оплата только:') }} {{ p.coins|join(' / ') }}</span>{% endif %}
+            </span>
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+      <p class="hint" style="margin-top:.85rem">{{ _('Без автопродления. Подписка просто заканчивается — мы ничего не списываем повторно.') }}</p>
+    </fieldset>
+
+    <fieldset class="card" style="border:1px solid var(--line)">
+      <legend class="card__title" style="padding:0 .4rem">{{ _('Способ оплаты') }}</legend>
+      <div class="choice-grid" style="margin-top:.5rem">
+        {% for m in methods %}
+        <label class="choice">
+          <input type="radio" name="method" value="{{ m.value }}" {{ 'checked' if (sel_method and sel_method == m.value) or (not sel_method and loop.first) }}>
+          <span class="choice__mark"></span>
+          <span class="choice__body"><span class="choice__title">{{ _(m.label) }}</span><span class="choice__sub">{{ _(m.sub) }}</span></span>
+        </label>
+        {% endfor %}
+      </div>
+      <div class="banner banner--info" style="margin-top:1rem">
+        <span class="banner__icon">i</span>
+        <div class="banner__body"><strong>{{ _('Честно о сроках') }}</strong><p>{{ _('Оплата on-chain (BTC / LTC / USDT) засчитывается после нескольких подтверждений сети — обычно 10–40 минут.') }}</p></div>
+      </div>
+    </fieldset>
+
+    {# Promo code. Server-rendered on purpose: the whole page must work over .onion without JS, so
+       Apply is a second submit button on this same form and the recalculated prices come
+       back from the server. No countdown, no "last chance" — the code either works or it says why. #}
+    <div class="card">
+      <h3 style="font-size:var(--fs-md)">{{ _('Промокод') }} <span class="opt muted" style="font-weight:400">{{ _('— необязательно') }}</span></h3>
+      {% if promo_error %}
+      <div class="banner banner--danger" style="margin:.75rem 0"><span class="banner__icon">×</span><div class="banner__body"><p>{{ promo_error }}</p></div></div>
+      {% elif promo_percent %}
+      <div class="banner banner--ok" style="margin:.75rem 0" role="status"><span class="banner__icon">●</span><div class="banner__body"><p>{{ _('Промокод применён: −{percent}% на любой тариф ниже.').format(percent=promo_percent) }}</p></div></div>
+      {% endif %}
+      <div class="field" style="margin:0">
+        <label class="label" for="promo">{{ _('Код') }}</label>
+        <input class="input input--mono" id="promo" name="promo_code" value="{{ promo_code|default('', true) }}"
+               maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      </div>
+      <button class="btn btn--ghost btn--sm" type="submit" name="action" value="apply" style="margin-top:.75rem">{{ _('Применить') }}</button>
+      <p class="hint">{{ _('Цены ниже пересчитаются. Скидка попадёт и в счёт, и в сумму к оплате.') }}</p>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:var(--fs-md)">{{ _('Продление существующего аккаунта') }} <span class="opt muted" style="font-weight:400">{{ _('— необязательно') }}</span></h3>
+      <p class="muted" style="font-size:var(--fs-sm)">{{ _('Уже есть номер? Укажите его — оплата добавится к текущей подписке, новый номер не создаётся.') }}</p>
+      <div class="field" style="margin:0">
+        <label class="label" for="renew">{{ _('Номер аккаунта') }}</label>
+        {# Echoed back so an error re-render (or Apply) does not silently wipe a 20-digit
+           credential the customer just copied out of their password manager. #}
+        <input class="input input--mono" id="renew" name="account_number" value="{{ account_number|default('', true) }}" placeholder="0000 0000 0000 0000 0000" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card" style="position:sticky;top:80px">
+      <h3 style="font-size:var(--fs-md)">{{ _('Итог') }}</h3>
+      {# "The rate is locked for 15 minutes" was a lie: rate_expires_at is written and never read. The
+         amount IS fixed at creation, but the real clock is invoice.expires_at (60 min) — and the
+         customer was never shown it anywhere. Derived from the setting, so it cannot drift. #}
+      <p class="muted" style="font-size:var(--fs-sm);margin:1rem 0">{{ _('Сумма в крипте и адрес для оплаты — на следующем шаге. Сумма фиксируется при создании счёта и не меняется, но оплатить нужно в течение {ttl} минут.').format(ttl=invoice_ttl_minutes) }}</p>
+      {% if promo_percent %}
+      <p style="margin:0 0 1rem;font-size:var(--fs-sm)"><strong>{{ _('Промокод −{percent}% учтён в ценах слева.').format(percent=promo_percent) }}</strong></p>
+      {% endif %}
+      {# name/value on the submit: without JS the button IS how the server learns which of the two
+         actions was pressed. Missing field → "create", so an old client or a curl still buys. #}
+      <button class="btn btn--primary btn--lg btn--block" type="submit" name="action" value="create">{{ _('Создать счёт') }}</button>
+    </div>
+  </aside>
+</div>
+</form>
+{% endif %}
+{% endblock %}

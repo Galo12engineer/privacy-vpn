@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% set page = 'guides' %}
+{% block title %}{{ _('Обход цензуры') }} · privacyvpn VPN{% endblock %}
+{% block main_class %}container guide{% endblock %}
+
+{#
+  The censorship-resistant transport guide (VLESS+Reality). A DRAFT behind a roadmap gate: the page
+  renders on a direct URL, but it is NOT added to the /guides index or the topbar disclaimer until
+  the live in-country test passes (docs/ru-validation.md §4). Publishing is step 5 of
+  productisation.
+#}
+
+{% block content %}
+<p class="term-cmd" aria-hidden="true"><span>privacyvpn</span> <span class="pct">~ %</span> <span><b>man</b> vless-reality</span></p>
+<div class="page-head">
+  <h1>{{ _('Обход цензуры (VLESS + Reality)') }}</h1>
+  <p class="lede" style="max-width:62ch">{{ _('В ряде стран свобода слова и доступ в интернет ограничены: трафик фильтруют по DPI, мессенджеры и сайты блокируют (например, Китай, Россия, Иран, Туркменистан). Для таких сетей — отдельный транспорт VLESS + Reality: он маскирует подключение под обычный визит на настоящий сайт по HTTPS, и цензор не отличает его от штатного трафика. Это НЕ WireGuard — нужен другой клиент.') }}</p>
+</div>
+
+<p class="mono-note"><span aria-hidden="true"># </span>{{ _('Официальное приложение WireGuard тут НЕ подойдёт. Нужен клиент на движке Xray — например v2rayNG.') }}</p>
+
+<ol class="lp-steps" role="list">
+  <li><span class="n" aria-hidden="true">01</span><div>
+    <p><b>{{ _('Поставьте клиент на движке Xray.') }}</b> {{ _('Android — рекомендуем') }} <b>v2rayNG</b> ({{ _('Google Play или APK') }} <code>github.com/2dust/v2rayNG/releases</code>): {{ _('движок Xray полностью поддерживает наш транспорт. iOS/iPadOS сложнее (нужен Xray-клиент с XHTTP) — какой брать и как поставить, в т.ч. БЕЗ смены региона, в блоке «iOS» ниже.') }}</p>
+    <p class="muted"><b>Hiddify</b> {{ _('проще на вид, но его движок по умолчанию (sing-box) на этом транспорте может подвешивать отдачу — загрузку файлов, звонки, Telegram: сайты открываются, а выгрузка стоит. Если так — переключитесь на v2rayNG. Ставьте свежую версию клиента и обновляйте её; скачивайте только с официальных страниц.') }}</p>
+  </div></li>
+  <li><span class="n" aria-hidden="true">02</span><div>
+    <p>{{ _('В кабинете:') }} <a href="{{ url_for('add_device') }}"><b>{{ _('Устройства') }}</b></a> → <b>{{ _('Добавить') }}</b> → {{ _('выберите локацию. Получите ссылку вида') }} <code>vless://…</code> {{ _('и QR-код.') }}</p>
+    <p class="muted">{{ _('Приватный ключ вводить не нужно — для этого транспорта его выдаёт сервер. Ссылка/QR — это весь профиль целиком.') }}</p>
+  </div></li>
+  <li><span class="n" aria-hidden="true">03</span><div>
+    <p>{{ _('Импортируйте профиль: в приложении') }} <b>+</b> → <b>{{ _('импорт из буфера обмена') }}</b> ({{ _('скопируйте строку') }} <code>vless://</code> {{ _('заранее') }}) {{ _('или') }} <b>+</b> → <b>{{ _('скан QR-кода') }}</b>.</p>
+  </div></li>
+  <li><span class="n" aria-hidden="true">04</span><div>
+    <p>{{ _('Нажмите на добавленный профиль, чтобы он стал активным, затем большую кнопку') }} <b>{{ _('Подключить') }}</b>. {{ _('Разрешите создание VPN-профиля, если система спросит.') }}</p>
+  </div></li>
+</ol>
+
+<div class="term-win" style="margin-top:1.75rem">
+  <section class="lp-cell">
+    <div class="idx" aria-hidden="true"><span>ios · client</span><span class="ln"></span></div>
+    <h2>{{ _('iOS — какой клиент и как поставить') }}</h2>
+    <p class="muted">{{ _('Нужен клиент на движке Xray с поддержкой XHTTP. Клиенты на sing-box (Hiddify, NekoBox) на этом транспорте подвешивают отдачу — не берите.') }}</p>
+    <p class="muted"><b>{{ _('Без смены региона:') }}</b> {{ _('иногда в App Store ещё есть новые Xray-клиенты, импортирующие vless:// — например INCY или «Изи VPN» (бесплатные). Их периодически убирают по требованию цензоров, так что проверяйте наличие; если пропали — путь ниже.') }}</p>
+    <p class="muted"><b>{{ _('Через смену региона (надёжно):') }}</b> {{ _('эталонные клиенты — v2rayTun / Streisand (бесплатные) или Shadowrocket (~$3, самый стабильный). Их убрали из App Store ряда стран, поэтому ставят разовой сменой страны аккаунта:') }}</p>
+    <p class="muted"><b>1.</b> {{ _('Настройки → ваше имя вверху → Медиа и покупки → Просмотреть → Страна/регион → Изменить страну или регион.') }}</p>
+    <p class="muted"><b>2.</b> {{ _('Выберите другую страну (напр. Армению или США), способ оплаты') }} <b>{{ _('Нет') }}</b> ({{ _('для бесплатных приложений карта не нужна') }}), {{ _('впишите любой корректный адрес этой страны, сохраните. Условие: нет активных подписок Apple и нулевой остаток на счёте App Store.') }}</p>
+    <p class="muted"><b>3.</b> {{ _('App Store → установите нужный клиент, верните прежний регион (приложение останется). Для обновления регион меняют снова — это нормально.') }}</p>
+  </section>
+</div>
+
+<div class="term-win" style="margin-top:1.75rem">
+  <div class="lp-cells lp-cells--2">
+    <section class="lp-cell">
+      <div class="idx" aria-hidden="true"><span>check</span><span class="ln"></span></div>
+      <h2>{{ _('Проверьте, что работает') }}</h2>
+      <p class="muted">{{ _('После подключения откройте') }} <code>https://ipinfo.io</code> {{ _('или') }} <code>https://whoer.net</code>. {{ _('Страна и IP должны быть НЕ вашими — это адрес нашего узла. DNS идёт через наш резолвер на узле, без логов.') }}</p>
+    </section>
+    <section class="lp-cell">
+      <div class="idx" aria-hidden="true"><span>dpi</span><span class="ln"></span></div>
+      <h2>{{ _('Если не подключается') }}</h2>
+      <p class="muted">{{ _('Откройте в приложении раздел') }} <b>{{ _('Логи') }}</b> — по ним видно, недоступен ли узел или сеть режет хендшейк. {{ _('Если сайты открываются, но отдача (загрузка файлов, звонки) висит — дело в клиенте: возьмите v2rayNG.') }} {{ _('Попробуйте другую локацию из списка. Если не идёт стабильно — напишите в') }} <a href="{{ url_for('support') }}">{{ _('поддержку') }}</a>, {{ _('подберём площадку.') }}</p>
+    </section>
+  </div>
+</div>
+
+<p class="mono-note" style="margin-top:1.5rem"><span aria-hidden="true"># </span>{{ _('Reality маскирует TLS-хендшейк под настоящий сайт и не отвечает на активное зондирование — поэтому устойчивее обычного WireGuard в сетях с DPI. Стойкость зависит и от площадки узла: если конкретная сеть режет — меняем узел, ссылку менять не нужно.') }}</p>
+<p style="margin-top:1.5rem"><a href="/guides">← {{ _('Гайды') }}</a></p>
+{% endblock %}

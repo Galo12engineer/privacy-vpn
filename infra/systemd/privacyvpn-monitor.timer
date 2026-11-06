@@ -1,0 +1,11 @@
+[Unit]
+Description=Run privacyvpn monitoring probe every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+# a little jitter so we do not collide with the backup or other cron jobs
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target

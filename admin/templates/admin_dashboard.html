@@ -1,0 +1,114 @@
+{% extends "admin_base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Обзор{% endblock %}
+{% block content %}
+{% set active_nodes = nodes | selectattr('status.value', 'equalto', 'active') | list | length %}
+{% set down_nodes   = nodes | selectattr('status.value', 'equalto', 'down')   | list | length %}
+{% set for_sale     = nodes | selectattr('available_for_sale') | list | length %}
+{% set active_plans = plans | selectattr('is_active') | list | length %}
+{% set featured     = plans | selectattr('featured') | list | first %}
+
+<div class="page-head">
+  <p class="admin-kicker">обзор</p>
+  <h1>Дашборд</h1>
+  <p class="muted">Здоровье парка нод и тарифной сетки — с одного взгляда.</p>
+</div>
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="k">Нод всего</div>
+    <div class="v">{{ nodes | length }}</div>
+  </div>
+  <div class="stat">
+    <div class="k">Активны</div>
+    <div class="v">{{ active_nodes }}<small> / {{ nodes | length }}</small></div>
+    {% if down_nodes %}<div class="d is-alert"><span class="dot">●</span> {{ down_nodes }} down</div>{% endif %}
+  </div>
+  <div class="stat">
+    <div class="k">В продаже</div>
+    <div class="v">{{ for_sale }}</div>
+  </div>
+  <div class="stat">
+    <div class="k">Тарифов</div>
+    <div class="v">{{ active_plans }}<small> / {{ plans | length }}</small></div>
+    <div class="d">активных / всего</div>
+  </div>
+  <div class="stat">
+    <div class="k">Рекомендован</div>
+    <div class="v is-featured">{% if featured %}★ {{ featured.code }}{% else %}<small>—</small>{% endif %}</div>
+  </div>
+</div>
+
+<div class="split" style="margin-top:1.75rem">
+  <section>
+    <div class="card__head">
+      <h2 style="font-size:var(--fs-lg)">Ноды</h2>
+      <a href="{{ admin_path }}/nodes" style="font-size:var(--fs-sm)">управление →</a>
+    </div>
+    <div class="table-wrap">
+      <table class="tbl tbl--dense">
+        <caption class="skip">Здоровье нод</caption>
+        <thead>
+          <tr>
+            <th scope="col">нода</th>
+            <th scope="col">протокол</th>
+            <th scope="col">статус</th>
+            <th scope="col">health</th>
+            <th scope="col">свежесть</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for n in nodes %}
+          <tr>
+            <td>
+              <div class="stack2">
+                <span>{{ n.name }}</span>
+                <span class="meta">{{ n.location_name }}</span>
+              </div>
+            </td>
+            <td class="proto">{{ m.proto_label(n.protocol) }}</td>
+            <td>{{ m.node_status(n.status) }}</td>
+            <td><span class="metric">cpu&nbsp;<b>{{ n.health_cpu_pct if n.health_cpu_pct is not none else '—' }}</b> · mem&nbsp;<b>{{ n.health_mem_pct if n.health_mem_pct is not none else '—' }}</b> · peers&nbsp;<b>{{ n.health_peers if n.health_peers is not none else '—' }}</b></span></td>
+            <td><span class="freshness">{{ n.last_health_at.strftime('%m-%d %H:%M') if n.last_health_at else 'нет данных' }}</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="empty">Нод пока нет.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card__head">
+      <h2 style="font-size:var(--fs-lg)">Тарифы</h2>
+      <a href="{{ admin_path }}/plans" style="font-size:var(--fs-sm)">редактировать →</a>
+    </div>
+    <div class="table-wrap">
+      <table class="tbl tbl--dense">
+        <caption class="skip">Сводка тарифов</caption>
+        <thead>
+          <tr>
+            <th scope="col">код</th>
+            <th scope="col" class="num">дни</th>
+            <th scope="col" class="num">цена</th>
+            <th scope="col">актив.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in plans %}
+          <tr>
+            <td class="cellcode">{{ p.code }}{% if p.featured %} <span class="tag-star" title="рекомендованный">★</span>{% endif %}</td>
+            <td class="num">{{ p.duration_days }}</td>
+            <td class="num">{{ '%.2f'|format(p.price_fiat_cents / 100) }}&nbsp;{{ p.fiat_currency }}</td>
+            <td>{% if p.is_active %}<span class="badge badge--ok badge--none">да</span>{% else %}<span class="badge badge--none">нет</span>{% endif %}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="empty">Тарифов пока нет.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% set page = 'devices' %}
+{% block title %}{{ _('Конфиг готов') }} — privacyvpn VPN{% endblock %}
+
+{% block content %}
+<ol class="steps" aria-label="{{ _('Шаги') }}">
+  <li><span class="step-n">1</span> {{ _('Устройство') }}</li>
+  <li aria-current="step"><span class="step-n">2</span> {{ _('Конфиг') }}</li>
+</ol>
+
+{% if vless_link %}
+{# VLESS+Reality: the client is identified by a UUID (inside the link); there is no private key
+   and no file #}
+<div class="page-head">
+  <h1>{{ _('Конфиг готов') }}</h1>
+  <p class="muted">{{ _('Устройство') }} <strong>{{ device_name }}</strong> · {{ location }}. {{ _('Импортируйте в приложение Hiddify, v2rayNG или Streisand (клиент Xray).') }}</p>
+</div>
+
+<div class="split">
+  <section>
+    <div class="card">
+      <div class="card__head">
+        <span class="card__title mono">{{ _('Ссылка подключения') }}</span>
+        <button class="btn btn--ghost btn--sm" type="button" data-copy="#vless-link" data-copied="{{ _('Скопировано ✓') }}">{{ _('Копировать') }}</button>
+      </div>
+
+      <div class="codeblock"><pre id="vless-link" style="white-space:pre-wrap;word-break:break-all">{{ vless_link }}</pre></div>
+
+      <div class="banner banner--info" style="margin-top:1rem">
+        <span class="banner__icon">i</span>
+        <div class="banner__body"><strong>{{ _('Нужен клиент Xray') }}</strong>
+          <p>{{ _('Официальное приложение WireGuard не подойдёт. Поставьте Hiddify, v2rayNG, Streisand или v2rayTun и импортируйте ссылку или QR.') }}</p></div>
+      </div>
+
+      <div class="btn-row" style="margin-top:1rem">
+        <button class="btn btn--primary" type="button" data-copy="#vless-link" data-copied="{{ _('Скопировано ✓') }}">{{ _('Копировать ссылку') }}</button>
+        <a class="btn btn--quiet" href="{{ url_for('dashboard') }}">{{ _('Готово → к дашборду') }}</a>
+      </div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card center">
+      <h3 style="font-size:var(--fs-md)">{{ _('QR для телефона') }}</h3>
+      <p class="muted" style="font-size:var(--fs-sm)">{{ _('Отсканируйте QR в приложении Hiddify, v2rayNG или Streisand.') }}</p>
+      <div class="qr" style="margin:1rem auto" role="img" aria-label="{{ _('QR-код подключения VLESS') }}">
+        <canvas width="220" height="220" data-qr="{{ vless_link }}"></canvas>
+      </div>
+      <noscript><p class="hint">{{ _('Без JavaScript QR не отображается — скопируйте ссылку и вставьте в приложение.') }}</p></noscript>
+    </div>
+  </aside>
+</div>
+
+{% else %}
+<div class="page-head">
+  <h1>{{ _('Конфиг готов') }}</h1>
+  <p class="muted">{{ _('Устройство') }} <strong>{{ device_name }}</strong> · {{ location }}. {{ _('Работает на компьютере и телефоне через официальный клиент WireGuard.') }}</p>
+</div>
+
+{# Two clear paths: desktop (the .conf file) and phone (the QR). The page used to be phone-only —
+   a Linux/Windows/macOS buyer got a .conf and a phone QR with no idea what to do with either. #}
+<div class="card" style="margin-bottom:1.25rem">
+  <div class="card__head"><span class="card__title">{{ _('Как подключиться') }}</span></div>
+  <div class="split" style="--space:1rem;margin-top:.5rem">
+    <div>
+      <strong>🖥 {{ _('Компьютер (Windows / macOS / Linux)') }}</strong>
+      <p class="muted" style="font-size:var(--fs-sm);margin:.3rem 0 0">{{ _('Поставьте официальный клиент WireGuard, нажмите «Скачать .conf», затем в приложении — «Импорт из файла» и выберите скачанный файл.') }}</p>
+    </div>
+    <div>
+      <strong>📱 {{ _('Телефон (Android / iOS)') }}</strong>
+      <p class="muted" style="font-size:var(--fs-sm);margin:.3rem 0 0">{{ _('Откройте приложение WireGuard → «+» → «Сканировать QR» и отсканируйте код справа. Камерой телефона НЕ сканируйте — она откроет поиск, а не VPN.') }}</p>
+    </div>
+  </div>
+  {# Kill-switch belongs HERE, not only in the guides: this is the page where the customer decides
+     they are done and starts using the tunnel. The guides used to promise a kill-switch on macOS/iOS
+     that the official client does not have (AllowedIPs=0/0 is routing while UP, not a fail-closed),
+     and a false safety claim is worse than a missing feature — the user changes behaviour trusting
+     it. Say plainly where it exists and where it does not. #}
+  <div class="banner banner--warn" style="margin-top:1rem">
+    <span class="banner__icon">!</span>
+    <div class="banner__body"><strong>{{ _('Kill-switch есть не везде') }}</strong>
+      <p>{{ _('Если туннель оборвётся, трафик пойдёт в открытую сеть — если не включён kill-switch. Он есть только на Windows («Block untunneled traffic» в клиенте), Android («Block connections without VPN» в системных настройках) и Linux (правила nftables через PostUp/PreDown).') }}
+      <strong>{{ _('На macOS и iOS его нет:') }}</strong> {{ _('«Автоподключение» / On-Demand лишь поднимает туннель заново, а не блокирует трафик при обрыве. Подробности — в гайде для вашей системы ниже.') }}</p></div>
+  </div>
+
+  {# target=_blank on purpose: the config page is Cache-Control: no-store, so navigating away and
+     pressing Back gives Firefox's "Document Expired" and the .conf is gone. Opening the guide in a
+     new tab keeps this page (and the key, which lives only here) in place. Plain HTML → .onion-safe. #}
+  <div class="btn-row" style="margin-top:1rem;flex-wrap:wrap">
+    <span class="muted" style="font-size:var(--fs-sm);align-self:center">{{ _('Пошагово для вашей системы (откроется в новой вкладке):') }}</span>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('guide', os='windows') }}" target="_blank" rel="noopener">Windows</a>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('guide', os='macos') }}" target="_blank" rel="noopener">macOS</a>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('guide', os='linux') }}" target="_blank" rel="noopener">Linux</a>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('guide', os='android') }}" target="_blank" rel="noopener">Android</a>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('guide', os='ios') }}" target="_blank" rel="noopener">iOS</a>
+  </div>
+</div>
+
+<div class="split">
+  <section>
+    <div class="card">
+      <div class="card__head">
+        <span class="card__title mono">{{ device_name }}.conf</span>
+        <button class="btn btn--ghost btn--sm" type="button" data-copy="#conf" data-copied="{{ _('Скопировано ✓') }}">{{ _('Копировать') }}</button>
+      </div>
+
+      <div class="codeblock"><pre id="conf">{{ conf }}</pre></div>
+      {# data-priv-placeholder: the SAME placeholder the server rendered into #conf above, so that
+         the JS rebuild (which replaces the whole block) cannot disagree with the no-JS fallback.
+         data-pubkey: the key the server ACTUALLY registered for this peer. The browser injects its
+         stashed private key only if that key derives to this pubkey — otherwise the customer walks
+         away with a .conf that can never handshake (the node drops unknown keys silently). #}
+      <script type="text/plain" id="conf-tpl" data-priv-placeholder="{{ priv_placeholder }}"
+              data-pubkey="{{ device_public_key or '' }}">{{ conf_marker }}</script>
+
+      <div class="banner banner--warn" id="conf-mismatch" style="margin-top:1rem" hidden>
+        <span class="banner__icon">!</span>
+        <div class="banner__body"><strong>{{ _('Конфиг неполный') }}</strong>
+          <p>{{ _('Ключ в этом браузере не совпадает с ключом, зарегистрированным для устройства — такой конфиг не подключится. Удалите устройство и добавьте его заново в одной вкладке.') }}</p></div>
+      </div>
+
+      <div class="banner banner--info" style="margin-top:1rem">
+        <span class="banner__icon">i</span>
+        <div class="banner__body"><strong>{{ _('Ключ создан в браузере') }}</strong>
+          <p>{{ _('Конфиг и QR собираются локально, с вашим приватным ключом — на сервер он не уходит. Без JavaScript подставьте приватный ключ вручную вместо плейсхолдера.') }}</p></div>
+      </div>
+
+      <div class="btn-row" style="margin-top:1rem">
+        <a class="btn btn--primary" id="dl" href="#" download="{{ device_name }}.conf">{{ _('Скачать .conf') }}</a>
+        {# iOS is where a plain download link dead-ends: Safari may open the file instead of saving
+           it, and the QR is useless on the same screen (WireGuard scans with the camera). The share
+           sheet is the reliable path — it offers "Save to Files" and WireGuard itself. Hidden until
+           the JS confirms the browser can actually share a file, so no dead button anywhere else. #}
+        <button class="btn btn--ghost" type="button" id="share" hidden>{{ _('Поделиться в WireGuard') }}</button>
+        <button class="btn btn--ghost" type="button" data-copy="#conf" data-copied="{{ _('Скопировано ✓') }}">{{ _('Копировать текст') }}</button>
+        <a class="btn btn--quiet" href="{{ url_for('dashboard') }}">{{ _('Готово → к дашборду') }}</a>
+      </div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card center">
+      <h3 style="font-size:var(--fs-md)">{{ _('QR для телефона') }}</h3>
+      <p class="muted" style="font-size:var(--fs-sm)">{{ _('Отсканируйте ИЗ приложения WireGuard (не камерой телефона). Код строится локально, включая приватный ключ.') }}</p>
+      <div class="qr" style="margin:1rem auto" role="img" aria-label="{{ _('QR-код конфигурации WireGuard') }}">
+        <canvas width="220" height="220" data-qr-conf></canvas>
+      </div>
+      <noscript><p class="hint">{{ _('Без JavaScript QR не отображается — используйте «Скачать .conf» и импортируйте файл.') }}</p></noscript>
+    </div>
+  </aside>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='qr.js') }}" defer></script>
+{# wg-keys.js is needed HERE too, not only on the add form: tt-glue verifies that the stashed
+   private key derives to the pubkey the server registered, and that needs publicFromPrivate. #}
+<script src="{{ url_for('static', filename='wg-keys.js') }}" defer></script>
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
+<script src="{{ url_for('static', filename='tt-glue.js') }}" defer></script>
+{% endblock %}

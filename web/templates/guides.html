@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% set page = 'guides' %}
+{% block title %}{{ _('Гайды') }} — privacyvpn VPN{% endblock %}
+{% block main_class %}container guide{% endblock %}
+
+{% block content %}
+<p class="term-cmd" aria-hidden="true"><span>privacyvpn</span> <span class="pct">~ %</span> <span><b>ls</b> guides/</span></p>
+<div class="page-head">
+  <h1>{{ _('Гайды по подключению') }}</h1>
+  <p class="muted" style="max-width:60ch">{{ _('Своего приложения у нас нет — используется официальный клиент WireGuard. Импорт') }} <code>.conf</code> {{ _('или скан QR.') }}</p>
+</div>
+
+<div class="term-win guide-list">
+  <a class="guide-row" href="/guides/windows"><span class="t"><span class="nm">Windows</span><span class="sub">{{ _('Импорт туннеля + kill-switch') }}</span></span><span class="go" aria-hidden="true">→</span></a>
+  <a class="guide-row" href="/guides/macos"><span class="t"><span class="nm">macOS</span><span class="sub">{{ _('App Store · импорт / QR') }}</span></span><span class="go" aria-hidden="true">→</span></a>
+  <a class="guide-row" href="/guides/ios"><span class="t"><span class="nm">iOS / iPadOS</span><span class="sub">{{ _('Скан QR · On-Demand') }}</span></span><span class="go" aria-hidden="true">→</span></a>
+  <a class="guide-row" href="/guides/android"><span class="t"><span class="nm">Android</span><span class="sub">{{ _('Play / F-Droid · Always-on') }}</span></span><span class="go" aria-hidden="true">→</span></a>
+  <a class="guide-row" href="/guides/linux"><span class="t"><span class="nm">Linux</span><span class="sub">{{ _('wg-quick · fallback keygen') }}</span></span><span class="go" aria-hidden="true">→</span></a>
+</div>
+
+<p class="mono-note" style="margin-top:1.5rem"><span aria-hidden="true"># </span>{{ _('Vanilla WireGuard может детектироваться DPI в некоторых сетях (RU/IR/CN). Обфускация — на дорожной карте (требует не-официального клиента).') }}</p>
+{% endblock %}

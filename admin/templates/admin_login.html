@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="no-referrer">
+  <title>Вход в админку — privacyvpn</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+</head>
+<body class="admin">
+<a class="skip" href="#main">К содержимому</a>
+
+<header class="topbar">
+  <a class="wordmark" href="{{ admin_path }}" aria-label="privacyvpn · админка">
+    <span class="wm-1">privacy</span><span class="wm-dot">·</span><span class="wm-2"><span>v</span><span>p</span><span>n</span></span>
+  </a>
+  <div class="topbar__spacer"></div>
+  <div class="topbar__actions">
+    <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false" aria-label="Переключить тему">◐</button>
+  </div>
+</header>
+
+<main id="main" class="container container--narrow">
+  <div class="page-head center">
+    <p class="admin-kicker">operator console</p>
+    <h1>Вход в админку</h1>
+    <p class="muted">Логин, пароль и код 2FA.</p>
+  </div>
+
+  {% if error %}
+  <div class="banner banner--danger" role="alert" style="margin-bottom:1.25rem">
+    <span class="banner__icon">×</span>
+    <div class="banner__body">
+      {% if error == 'invalid' %}
+        <strong>Неверный логин или пароль</strong><p>Проверьте данные и попробуйте снова.</p>
+      {% elif error == 'totp' %}
+        <strong>Неверный код 2FA</strong><p>Код из аутентификатора не подошёл или уже был использован.</p>
+      {% elif error == '2fa_required' %}
+        <strong>Требуется 2FA</strong><p>Для аккаунта включена обязательная двухфакторная аутентификация, но TOTP ещё не настроен — сначала enroll.</p>
+      {% elif error == 'rate_limited' %}
+        <strong>Слишком много попыток</strong><p>Вход временно ограничен. Подождите и попробуйте позже.</p>
+      {% else %}
+        <strong>Ошибка входа</strong><p>{{ error }}</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <form class="card" method="post" action="{{ admin_path }}/login" autocomplete="off">
+    <div class="field">
+      <label class="label" for="username">Логин</label>
+      <input class="input input--mono" id="username" name="username"
+             autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+    </div>
+    <div class="field">
+      <label class="label" for="password">Пароль</label>
+      <input class="input" id="password" name="password" type="password"
+             autocomplete="current-password" required>
+    </div>
+    <div class="field">
+      <label class="label" for="totp">Код 2FA</label>
+      <input class="input input--mono" id="totp" name="totp" inputmode="numeric"
+             autocomplete="one-time-code" pattern="[0-9]*" spellcheck="false" placeholder="000000">
+    </div>
+    <button class="btn btn--primary btn--lg btn--block" type="submit">Войти</button>
+  </form>
+</main>
+
+<footer class="footer">
+  <div class="footer__legal" style="border:0;justify-content:center;color:var(--ink-3)">
+    privacyvpn · операторская консоль
+  </div>
+</footer>
+
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>

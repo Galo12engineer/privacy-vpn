@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily privacyvpn control-plane backup
+
+[Timer]
+# daily at ~03:17 UTC + up to 10 min of jitter (so we do not collide with other cron jobs)
+OnCalendar=*-*-* 03:17:00 UTC
+RandomizedDelaySec=600
+# a run missed while the VPS was down is caught up on the next start
+Persistent=true
+
+[Install]
+WantedBy=timers.target

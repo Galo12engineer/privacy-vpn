@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% set page = 'guides' %}
+{% block title %}WireGuard — Linux · privacyvpn VPN{% endblock %}
+{% block main_class %}container guide{% endblock %}
+
+{% block content %}
+<p class="term-cmd" aria-hidden="true"><span>privacyvpn</span> <span class="pct">~ %</span> <span><b>man</b> wireguard-linux</span></p>
+<div class="page-head">
+  <h1>{{ _('Linux — подключение') }}</h1>
+  <p class="lede" style="max-width:60ch">{{ _('Официальный клиент WireGuard; своего приложения у нас нет. Приватный ключ генерируется в вашем браузере и не покидает устройство.') }}</p>
+</div>
+
+<ol class="lp-steps" role="list">
+  <li><span class="n" aria-hidden="true">01</span><div><p>{{ _('Установите инструменты:') }} <code>sudo apt install wireguard</code> {{ _('(Debian/Ubuntu) или аналог вашего дистрибутива.') }}</p></div></li>
+  <li><span class="n" aria-hidden="true">02</span><div><p>{{ _('В кабинете скачайте') }} <code>.conf</code> {{ _('и положите в') }} <code>/etc/wireguard/wg0.conf</code> {{ _('(права') }} <code>chmod 600</code>).</p></div></li>
+  <li><span class="n" aria-hidden="true">03</span><div><p>{{ _('Туннель:') }} <code>sudo wg-quick up wg0</code> · <code>sudo wg-quick down wg0</code>.</p></div></li>
+  <li><span class="n" aria-hidden="true">04</span><div><p>{{ _('Автозапуск:') }} <code>sudo systemctl enable wg-quick@wg0</code>.</p></div></li>
+</ol>
+
+<div class="term-win" style="margin-top:1.75rem">
+  <div class="lp-cells lp-cells--2">
+    <section class="lp-cell">
+      <div class="idx" aria-hidden="true"><span>kill-switch</span><span class="ln"></span></div>
+      <h2>{{ _('Kill-switch') }}</h2>
+      <p class="muted">{{ _('Пока туннель поднят,') }} <code>wg-quick</code> {{ _('заворачивает в него весь трафик (fwmark + suppress_prefixlength). Но это маршрутизация, а не kill-switch: упал интерфейс — маршруты снялись, и трафик пойдёт в открытую сеть.') }} {{ _('Настоящий fail-closed делается правилами PostUp/PreDown с nftables — Linux единственная из платформ, где его можно собрать самому.') }}</p>
+    </section>
+    <section class="lp-cell">
+      <div class="idx" aria-hidden="true"><span>dns</span><span class="ln"></span></div>
+      <h2>{{ _('DNS и утечки') }}</h2>
+      <p class="muted">{{ _('DNS из конфига — нужен') }} <code>resolvconf</code> {{ _('или') }} <code>systemd-resolved</code>. {{ _('Если сеть режет порт 51820 — используйте Endpoint') }} <code>:443</code>.</p>
+    </section>
+  </div>
+</div>
+
+<section style="margin-top:1.75rem">
+  <h2>{{ _('Fallback без браузерного keygen (Tor «Safest» / без JS)') }}</h2>
+  <p class="muted" style="max-width:60ch">{{ _('Сгенерируйте пару локально и вставьте в кабинет только публичный ключ:') }}</p>
+  <div class="codeblock"><pre>wg genkey | tee privatekey | wg pubkey &gt; publickey
+cat publickey   <span class="cmt"># {{ _('это — в кабинет') }}</span>
+cat privatekey  <span class="cmt"># {{ _('это — в [Interface] PrivateKey локально') }}</span></pre></div>
+</section>
+
+<p class="mono-note" style="margin-top:1.5rem"><span aria-hidden="true"># </span>{{ _('Vanilla WireGuard может детектироваться DPI в некоторых сетях (RU/IR/CN). Обфускация — на дорожной карте (требует не-официального клиента).') }}</p>
+<p style="margin-top:1.5rem"><a href="/guides">← {{ _('Гайды') }}</a></p>
+{% endblock %}

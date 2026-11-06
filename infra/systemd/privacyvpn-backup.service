@@ -1,0 +1,14 @@
+[Unit]
+Description=privacyvpn encrypted control-plane backup (host, docker-compose deploy)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# BACKUP_AGE_RECIPIENT (the public age1...) + optionally BACKUP_KEEP/BACKUP_REMOTE.
+# The private age identity is NOT kept here — it lives offline with the operator only.
+EnvironmentFile=/etc/privacyvpn-backup.env
+WorkingDirectory=/opt/privacyvpn
+ExecStart=/opt/privacyvpn/infra/backups/backup-anonvm.sh
+# a backup must not hang forever if the db container has wedged
+TimeoutStartSec=600

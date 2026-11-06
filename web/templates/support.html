@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Поддержка') }} — privacyvpn VPN{% endblock %}
+
+{% block head %}
+<style>
+  .sup-fix { padding:.9rem 0; border-bottom:1px solid var(--line, #ddd); }
+  .sup-fix:first-of-type { border-top:1px solid var(--line, #ddd); }
+  .sup-fix h3 { font-size:var(--fs-md, 1rem); margin:0 0 .3rem; }
+  .chan__addr { font-family:var(--mono, ui-monospace, monospace); word-break:break-all; }
+  .sup-links { display:flex; flex-wrap:wrap; gap:.4rem 1.1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>{{ _('Поддержка') }}</h1>
+  <p class="muted">{{ _('Обычно отвечаем в течение суток. Пишите нашему боту в Telegram и по возможности укажите номер счёта — но никогда не присылайте приватный ключ: он нам не нужен и не должен покидать ваше устройство.') }}</p>
+</div>
+
+<div class="banner banner--info" role="note" style="margin-bottom:2rem">
+  <span class="banner__icon">?</span>
+  <div class="banner__body">
+    <strong>{{ _('Сначала загляните в базу знаний — скорее всего, ответ уже там.') }}</strong>
+    <p>{{ _('Частые вопросы и решения проблем — в') }} <a href="{{ url_for('faq') }}">FAQ</a>. {{ _('Настройка по шагам для всех ОС — в') }} <a href="{{ url_for('guides') }}">{{ _('Гайдах') }}</a>.</p>
+  </div>
+</div>
+
+<section style="margin-bottom:2.25rem">
+  <h2 style="font-size:var(--fs-lg)">{{ _('Быстрые решения') }}</h2>
+
+  <div class="sup-fix">
+    <h3>{{ _('Оплатил — а время не начислилось') }}</h3>
+    <p class="muted">{{ _('Криптоплатёж засчитывается после подтверждений сети — обычно 10–40 минут, активация автоматическая. Через час без изменений — напишите нам с номером счёта.') }} <a href="{{ url_for('faq') }}#payment">{{ _('Подробнее в FAQ') }}</a></p>
+  </div>
+
+  <div class="sup-fix">
+    <h3>{{ _('Подключился, но нет интернета') }}</h3>
+    <p class="muted">{{ _('Проверьте, что конфиг импортирован целиком (включая DNS), исходящий UDP не блокируется, и попробуйте другой сервер.') }} <a href="{{ url_for('faq') }}#trouble">{{ _('Подробнее в FAQ') }}</a></p>
+  </div>
+
+  <div class="sup-fix">
+    <h3>{{ _('Не подключается / нет handshake') }}</h3>
+    <p class="muted">{{ _('Сеть может резать UDP 51820 — переключите endpoint на :443; проверьте часы устройства и переимпортируйте конфиг.') }} <a href="{{ url_for('faq') }}#trouble">{{ _('Подробнее в FAQ') }}</a></p>
+  </div>
+
+  <div class="sup-fix">
+    <h3>{{ _('После отключения VPN нет интернета') }}</h3>
+    <p class="muted">{{ _('Kill-switch или always-on всё ещё блокирует трафик — выключите его в приложении WireGuard или в VPN-настройках ОС.') }} <a href="{{ url_for('faq') }}#trouble">{{ _('Подробнее в FAQ') }}</a></p>
+  </div>
+
+  <div class="sup-fix">
+    <h3>{{ _('Потерял номер аккаунта') }}</h3>
+    <p class="muted">{{ _('Восстановления нет by design: номер аккаунта — единственный ключ, и вернуть его мы не можем (email, даже если вы его указали, для восстановления не используется). Храните номер в менеджере паролей.') }}</p>
+  </div>
+</section>
+
+<section style="margin-bottom:2.25rem">
+  <h2 style="font-size:var(--fs-lg)">{{ _('Каналы связи') }}</h2>
+  <div class="grid grid-2">
+
+    {% if sup_bot %}
+    <div class="card">
+      <div class="card__head"><span class="card__title">{{ _('Поддержка в Telegram') }}</span><span class="badge badge--ok badge--none">telegram</span></div>
+      <p class="muted">{{ _('Основной канал: напишите нашему боту — оператор ответит там же. Приватно, 1:1, без светки аккаунтов.') }}</p>
+      <p><a class="chan__addr" href="{{ sup_bot }}" rel="noopener noreferrer">{{ sup_bot }}</a></p>
+    </div>
+    {% else %}
+    <div class="card">
+      <div class="card__head"><span class="card__title">{{ _('Поддержка в Telegram') }}</span><span class="badge badge--none">{{ _('скоро') }}</span></div>
+      <p class="muted">{{ _('Канал поддержки скоро откроется. Пока по срочному — порядок обращения в правилах использования ниже.') }}</p>
+    </div>
+    {% endif %}
+
+    {# abuse@ was removed from here: the domain has no MX, mail dies in the sender's queue, and this
+       block is a list of CONTACT CHANNELS, which is no place for a dead one. The escalation path stays
+       described in the AUP — the address lives there, as a compliance contact for hosters and
+       upstreams. Bring it back here once forwarding works (Dynadot → DNS Settings → Email Forward). #}
+    <div class="card">
+      <div class="card__head"><span class="card__title">{{ _('Абуз и юридическое') }}</span><span class="badge badge--none">AUP</span></div>
+      <p class="muted">{{ _('Жалобы на злоупотребления, DMCA, обращения правоохранительных органов — порядок и контакт описаны в правилах использования.') }}</p>
+      <p><a class="chan__addr" href="{{ url_for('aup') }}">{{ _('Правила использования (AUP)') }}</a></p>
+    </div>
+
+    {% if sup_tg_url %}
+    <div class="card">
+      <div class="card__head"><span class="card__title">{{ _('Telegram — канал') }}</span><span class="badge badge--info badge--none">telegram</span></div>
+      <p class="muted">{{ _('Официальные анонсы и все настоящие ссылки на сервис. Сверяйтесь с каналом, чтобы не попасть на фишинговые копии.') }}</p>
+      <p><a class="chan__addr" href="{{ sup_tg_url }}" rel="noopener noreferrer">{{ sup_tg_url }}</a></p>
+    </div>
+    {% endif %}
+
+    {% if sup_tg_dm %}
+    <div class="card">
+      <div class="card__head"><span class="card__title">{{ _('Telegram — личные сообщения') }}</span><span class="badge badge--info badge--none">telegram</span></div>
+      <p class="muted">{{ _('Личный вопрос, который не хочется писать в общий чат.') }}</p>
+      <p class="chan__addr">{{ sup_tg_dm }}</p>
+    </div>
+    {% endif %}
+
+    {% if sup_x_url %}
+    <div class="card">
+      <div class="card__head"><span class="card__title">X</span><span class="badge badge--none">x</span></div>
+      <p class="muted">{{ _('Новости и связь через личные сообщения.') }}</p>
+      <p><a class="chan__addr" href="{{ sup_x_url }}" rel="noopener noreferrer">{{ sup_x_url }}</a></p>
+    </div>
+    {% endif %}
+
+    {% if sup_pgp %}
+    <div class="card">
+      <div class="card__head"><span class="card__title">{{ _('PGP — шифрованная связь') }}</span><span class="badge badge--ok badge--none">pgp</span></div>
+      <p class="muted">{{ _('Для чувствительных обращений пишите зашифрованно. Отпечаток ключа:') }}</p>
+      <p class="chan__addr">{{ sup_pgp }}</p>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card__head"><span class="card__title">{{ _('Зеркало в Tor') }}</span><span class="badge badge--none">.onion</span></div>
+      <p class="muted">{{ _('Сайт работает через Tor, без JavaScript и внешних ресурсов.') }}</p>
+      <p><a class="chan__addr" href="{{ links.onion }}">{{ links.onion }}</a></p>
+    </div>
+
+  </div>
+  <p class="hint" style="margin-top:1rem">{{ _('Никогда не присылайте приватный ключ устройства — он нужен только вам. Достаточно номера счёта и описания проблемы.') }}</p>
+</section>
+
+<section>
+  <h2 style="font-size:var(--fs-lg)">{{ _('Быстрые ссылки') }}</h2>
+  <div class="sup-links muted">
+    <a href="{{ url_for('faq') }}">FAQ</a>
+    <a href="{{ url_for('guides') }}">{{ _('Гайды') }}</a>
+    <a href="{{ url_for('dashboard') }}">{{ _('Кабинет') }}</a>
+    <a href="{{ links.nolog }}">{{ _('Прозрачность') }}</a>
+    <a href="{{ url_for('terms') }}">{{ _('Условия') }}</a>
+    <a href="{{ url_for('aup') }}">AUP</a>
+    <a href="{{ url_for('privacy') }}">{{ _('Конфиденциальность') }}</a>
+  </div>
+</section>
+{% endblock %}

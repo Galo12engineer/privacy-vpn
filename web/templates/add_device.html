@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% set page = 'devices' %}
+{% block title %}{{ _('Добавить устройство') }} — privacyvpn VPN{% endblock %}
+{% block main_class %}container container--narrow{% endblock %}
+
+{% block content %}
+<ol class="steps" aria-label="{{ _('Шаги') }}">
+  <li aria-current="step"><span class="step-n">1</span> {{ _('Устройство') }}</li>
+  <li><span class="step-n">2</span> {{ _('Конфиг') }}</li>
+</ol>
+
+<div class="page-head">
+  <h1>{{ _('Добавить устройство') }}</h1>
+  <p class="muted">{{ _('Приватный ключ генерируется в вашем браузере и') }} <strong>{{ _('никогда не покидает его') }}</strong>. {{ _('Нам отправляется только публичный ключ.') }}</p>
+</div>
+
+{% if error %}
+<div class="banner banner--warn" role="status" style="margin-bottom:1.25rem"><span class="banner__icon">!</span><div class="banner__body"><p>{{ _(error) }}</p></div></div>
+{% endif %}
+
+{% if not nodes %}
+<div class="banner banner--info" role="status"><span class="banner__icon">○</span><div class="banner__body"><strong>{{ _('Локации временно недоступны') }}</strong><p>{{ _('Сервер обновляется — попробуйте через минуту. Ваша подписка при этом не тратится.') }}</p></div></div>
+<p style="margin-top:1.25rem"><a class="btn btn--quiet" href="{{ url_for('dashboard') }}">{{ _('Дашборд') }}</a></p>
+{% else %}
+<form class="card" method="post" action="{{ url_for('device_create') }}" data-keygen-form>
+  <div class="field">
+    <label class="label" for="name">{{ _('Имя устройства') }} <span class="opt">{{ _('— только для вас') }}</span></label>
+    <input class="input" id="name" name="name" placeholder="{{ _('Ноутбук') }}" maxlength="64" autocomplete="off">
+  </div>
+
+  <div class="field">
+    <label class="label" for="loc">{{ _('Локация') }}</label>
+    <select class="select" id="loc" name="node_id" required>
+      {% for n in nodes %}<option value="{{ n.id }}">{{ n.location_name }}</option>{% endfor %}
+    </select>
+  </div>
+
+  <div class="field">
+    <label class="label" for="pubkey">{{ _('Публичный ключ устройства') }}</label>
+    <div class="input-group">
+      <input class="input input--mono" id="pubkey" name="public_key" placeholder="{{ _('вставьте pubkey…') }}" spellcheck="false" autocomplete="off" required>
+      <button class="btn btn--ghost" type="button" data-keygen data-pub="#pubkey" data-priv="#privkey">{{ _('Сгенерировать') }}</button>
+    </div>
+    <p class="hint" data-keygen-note hidden>{{ _('Ключи созданы локально. Приватный ключ ниже перенесётся в конфиг на следующем шаге; на сервер он не уходит.') }}</p>
+  </div>
+
+  <div class="field">
+    <label class="label" for="privkey">{{ _('Приватный ключ') }} <span class="opt">{{ _('— остаётся у вас') }}</span></label>
+    <input class="input input--mono" id="privkey" placeholder="{{ _('заполнится после генерации') }}" readonly spellcheck="false">
+    <p class="hint">{{ _('Копировать его не нужно — он показан для честности: видно, что ключ создаётся у вас, а не на сервере. Просто нажмите «Создать конфиг» — ключ сам попадёт в ваш конфиг.') }}</p>
+  </div>
+
+  <details class="card card--quiet" style="border:1px dashed var(--line-strong);margin-bottom:1.25rem">
+    <summary style="cursor:pointer;font-weight:550;font-size:var(--fs-sm)">{{ _('Без JavaScript? Сгенерируйте ключи вручную') }}</summary>
+    <p class="muted" style="font-size:var(--fs-sm);margin:.7rem 0 .5rem">{{ _('В терминале с WireGuard выполните и вставьте') }} <strong>{{ _('только публичный') }}</strong> {{ _('ключ в поле выше:') }}</p>
+    <div class="codeblock"><pre>wg genkey | tee privatekey | wg pubkey &gt; publickey
+<span class="cmt"># privatekey — храните локально, не отправляйте</span>
+<span class="cmt"># publickey  — вставьте в поле «Публичный ключ»</span></pre></div>
+  </details>
+
+  <div class="banner banner--info" style="margin-bottom:1.25rem">
+    <span class="banner__icon">i</span>
+    <div class="banner__body"><strong>{{ _('Почему так') }}</strong><p>{{ _('Сервер не знает ваш приватный ключ — значит, не может расшифровать ваш трафик и нечего изъять по запросу. Это часть no-logs по дизайну.') }}</p></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn--primary btn--lg" type="submit">{{ _('Создать конфиг') }}</button>
+    <a class="btn btn--quiet" href="{{ url_for('dashboard') }}">{{ _('Отмена') }}</a>
+  </div>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='wg-keys.js') }}" defer></script>
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
+<script src="{{ url_for('static', filename='tt-glue.js') }}" defer></script>
+{% endblock %}

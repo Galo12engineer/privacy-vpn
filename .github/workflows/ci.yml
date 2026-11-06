@@ -1,0 +1,89 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  control-plane:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: vpn
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: vpn
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U vpn" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: install
+        working-directory: control-plane
+        run: pip install -e ".[dev,postgres]"
+      - name: lint (ruff)
+        working-directory: control-plane
+        run: ruff check app tests migrations scripts
+      - name: migrations (postgres — как на проде; 0008 ALTER TYPE не идёт на sqlite)
+        working-directory: control-plane
+        env: { CP_DATABASE_URL: "postgresql+psycopg://vpn:ci@localhost:5432/vpn" }
+        run: alembic upgrade head && alembic downgrade base && alembic upgrade head
+      - name: tests
+        working-directory: control-plane
+        # CP_TEST_DATABASE_URL turns on the tests that cannot run on SQLite — today the gift-token
+        # redemption race, which needs a real SELECT ... FOR UPDATE (SQLite ignores it, so the same
+        # test passes there against code with no lock at all). They skip when it is unset.
+        env: { CP_TEST_DATABASE_URL: "postgresql+psycopg://vpn:ci@localhost:5432/vpn" }
+        run: pytest -q
+
+  node-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: install
+        working-directory: node-agent
+        run: pip install -e ".[dev]"
+      - name: lint (ruff)
+        working-directory: node-agent
+        run: ruff check agent tests
+      - name: tests
+        working-directory: node-agent
+        run: pytest -q
+
+  i18n-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: every _('...') template string has an EN translation
+        run: python scripts/check_i18n.py
+
+  browser-crypto:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - name: validate X25519 (RFC 7748) + QR
+        run: node scripts/jscheck.cjs
+
+  policy-no-logs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: reverse-proxy / app logging policy
+        run: bash scripts/check_no_pii_logs.sh
+
+  onion-no-external:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: frontend has no external resources (.onion-safe)
+        run: bash scripts/check_no_external_resources.sh

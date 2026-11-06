@@ -1,0 +1,26 @@
+{# Crawler + link-preview metadata. Shared by base.html and the standalone landing.html.
+
+   Every URL here comes from `canonical_url` / `og_image`, which the server builds from a WHITELIST
+   of public hosts (app/seo.py), never from the raw Host header — an echoed Host would let a
+   stranger declare their own URL canonical for our pages. The same mechanism keeps the .onion
+   version self-referential, so og:image stays same-origin there and the "zero external resources"
+   invariant survives.
+
+   `meta_title` is handed in by the includer (base.html re-renders its own <title> block via
+   `self.title()`; landing.html is standalone and states it directly). It cannot be read here:
+   `{% include %}` gives the included template its OWN block namespace, so `self.title()` inside
+   this file would look for a `title` block that does not exist.
+
+   No JSON-LD on purpose: FAQPage/HowTo/WebSite+SearchAction are deprecated and
+   Review/AggregateRating would require ratings we do not have (docs/seo-ai-visibility.md §5). #}
+<meta name="description" content="{{ page_description }}">
+<link rel="canonical" href="{{ canonical_url }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="privacyvpn VPN">
+<meta property="og:title" content="{{ meta_title|default('privacyvpn VPN') }}">
+<meta property="og:description" content="{{ page_description }}">
+<meta property="og:url" content="{{ canonical_url }}">
+<meta property="og:image" content="{{ og_image }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
